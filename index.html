@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bingo Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-container">
+    <h1>Bingo Game</h1>
+    <div class="players">
+      <!-- Player 1's Table -->
+      <div class="player-board" id="player1-board">
+        <h2>Player 1</h2>
+        <div class="bingo-board" id="board1"></div>
+      </div>
+
+      <!-- Player 2's Table -->
+      <div class="player-board" id="player2-board">
+        <h2>Player 2</h2>
+        <div class="bingo-board" id="board2"></div>
+      </div>
+    </div>
+
+    <div class="number-bar">
+      <p>Number Drawn:</p>
+      <p id="current-number"></p>
+      <button id="next-turn">Next Turn</button>
+      <button id="reset-game">Restart Game</button>
+    </div>
+
+    <p id="turn-info">Player 1's turn</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
