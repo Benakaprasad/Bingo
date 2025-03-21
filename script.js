@@ -1,21 +1,21 @@
 const board1 = document.getElementById("board1");
 const board2 = document.getElementById("board2");
-const nextTurnButton = document.getElementById("next-turn");
 const resetButton = document.getElementById("reset-game");
-const currentNumberDisplay = document.getElementById("current-number");
 const turnInfo = document.getElementById("turn-info");
+const winnerInfo = document.getElementById("winner-info");
 
 let currentPlayer = 1;
-let drawnNumbers = [];
 let player1Board = [];
 let player2Board = [];
-let allNumbers = Array.from({ length: 75 }, (_, i) => i + 1);
+let player1StruckLines = [];
+let player2StruckLines = [];
+let allNumbers = Array.from({ length: 25 }, (_, i) => i + 1); // Numbers between 1 and 25
 
-// Function to generate a Bingo board with random numbers
+// Function to generate a Bingo board with numbers between 1 and 25
 function generateBoard() {
   let numbers = [];
   while (numbers.length < 25) {
-    let num = Math.floor(Math.random() * 75) + 1;
+    let num = Math.floor(Math.random() * 25) + 1; // Numbers between 1 and 25
     if (!numbers.includes(num)) {
       numbers.push(num);
     }
@@ -44,21 +44,54 @@ function strikeNumber(cell, number, player) {
       player2Board.splice(player2Board.indexOf(number), 1);
     }
 
-    // Check if the player has won (here we are not checking Bingo completion logic yet)
-    // if (player1Board.length === 0 || player2Board.length === 0) {
-    //   alert(`Player ${player} wins!`);
-    // }
+    // Check for Bingo after striking a number
+    checkForBingo(player);
   }
 }
 
-// Function to get the next random number
-function getNextNumber() {
-  let randomNum;
-  do {
-    randomNum = Math.floor(Math.random() * 75) + 1;
-  } while (drawnNumbers.includes(randomNum));
-  drawnNumbers.push(randomNum);
-  return randomNum;
+// Function to check for Bingo (5 full rows, columns, or diagonals)
+function checkForBingo(player) {
+  const board = player === 1 ? board1 : board2;
+  const cells = board.querySelectorAll('div');
+
+  const winningLines = [
+    // Rows
+    [0, 1, 2, 3, 4],
+    [5, 6, 7, 8, 9],
+    [10, 11, 12, 13, 14],
+    [15, 16, 17, 18, 19],
+    [20, 21, 22, 23, 24],
+    // Columns
+    [0, 5, 10, 15, 20],
+    [1, 6, 11, 16, 21],
+    [2, 7, 12, 17, 22],
+    [3, 8, 13, 18, 23],
+    [4, 9, 14, 19, 24],
+    // Diagonals
+    [0, 6, 12, 18, 24],
+    [4, 8, 12, 16, 20],
+  ];
+
+  let struckLines = [];
+
+  // Check all lines to see if they're fully struck
+  for (let i = 0; i < winningLines.length; i++) {
+    const line = winningLines[i];
+    if (line.every(index => cells[index].classList.contains("strike"))) {
+      struckLines.push(i);
+      line.forEach(index => cells[index].style.backgroundColor = '#66ff66'); // Highlight winning line
+    }
+  }
+
+  // Now check if the player has struck at least 5 full lines
+  if (struckLines.length >= 5) {
+    winnerInfo.textContent = `Player ${player} wins with ${struckLines.length} lines!`;
+    if (player === 1) {
+      player1StruckLines = struckLines;
+    } else {
+      player2StruckLines = struckLines;
+    }
+  }
 }
 
 // Function to start the game
@@ -67,39 +100,10 @@ function startGame() {
   player2Board = generateBoard();
   createBoard(board1, player1Board, 1);
   createBoard(board2, player2Board, 2);
-  drawnNumbers = [];
-  currentPlayer = 1;
+  player1StruckLines = [];
+  player2StruckLines = [];
+  winnerInfo.textContent = ""; // Clear any winner message
   turnInfo.textContent = "Player 1's turn";
-  currentNumberDisplay.textContent = "";
-  nextTurnButton.disabled = false;
-}
-
-// Function to handle the turn change
-function onNextTurn() {
-  const number = getNextNumber();
-  currentNumberDisplay.textContent = `Number Drawn: ${number}`;
-  turnInfo.textContent = `Player ${currentPlayer === 1 ? 2 : 1}'s turn`;
-  
-  // Mark the number if it's on the player's board
-  markNumberOnBoard(number, currentPlayer);
-
-  currentPlayer = currentPlayer === 1 ? 2 : 1;
-}
-
-// Function to mark the drawn number on the player's board
-function markNumberOnBoard(number, player) {
-  const board = player === 1 ? board1 : board2;
-  const cells = board.querySelectorAll('div');
-  cells.forEach(cell => {
-    if (parseInt(cell.textContent) === number && !cell.classList.contains("strike")) {
-      cell.classList.add("strike");
-      if (player === 1) {
-        player1Board.splice(player1Board.indexOf(number), 1);
-      } else {
-        player2Board.splice(player2Board.indexOf(number), 1);
-      }
-    }
-  });
 }
 
 // Function to reset the game
@@ -110,6 +114,5 @@ function resetGame() {
 // Start the game when the page loads
 startGame();
 
-// Event listeners
-nextTurnButton.addEventListener("click", onNextTurn);
+// Event listener
 resetButton.addEventListener("click", resetGame);
