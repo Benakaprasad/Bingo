@@ -10,6 +10,7 @@ let player2Board = [];
 let player1StruckLines = [];
 let player2StruckLines = [];
 let allNumbers = Array.from({ length: 25 }, (_, i) => i + 1); // Numbers between 1 and 25
+let gameOver = false; // Track whether the game is over
 
 // Function to generate a Bingo board with numbers between 1 and 25
 function generateBoard() {
@@ -36,8 +37,10 @@ function createBoard(boardElement, boardArray, player) {
 
 // Function to strike a number on the board
 function strikeNumber(cell, number, player) {
+  if (gameOver) return; // Stop if the game is over
+
   if (!cell.classList.contains("strike")) {
-    cell.classList.add("strike");
+    cell.classList.add("strike"); // Turns the struck number red
     if (player === 1) {
       player1Board.splice(player1Board.indexOf(number), 1);
     } else {
@@ -79,12 +82,13 @@ function checkForBingo(player) {
     const line = winningLines[i];
     if (line.every(index => cells[index].classList.contains("strike"))) {
       struckLines.push(i);
-      line.forEach(index => cells[index].style.backgroundColor = '#66ff66'); // Highlight winning line
+      line.forEach(index => cells[index].style.backgroundColor = '#66ff66'); // Highlight winning line in green
     }
   }
 
   // Now check if the player has struck at least 5 full lines
   if (struckLines.length >= 5) {
+    gameOver = true; // Stop the game after 5 lines
     winnerInfo.textContent = `Player ${player} wins with ${struckLines.length} lines!`;
     if (player === 1) {
       player1StruckLines = struckLines;
@@ -104,12 +108,19 @@ function startGame() {
   player2StruckLines = [];
   winnerInfo.textContent = ""; // Clear any winner message
   turnInfo.textContent = "Player 1's turn";
+  gameOver = false; // Reset the game status
 }
 
 // Function to reset the game
 function resetGame() {
   startGame(); // Calls startGame to reset everything
 }
+
+// Start the game when the page loads
+startGame();
+
+// Event listener
+resetButton.addEventListener("click", resetGame);
 
 // Start the game when the page loads
 startGame();
