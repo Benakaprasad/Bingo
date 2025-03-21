@@ -71,3 +71,17 @@ button {
 button:hover {
   background-color: #45a049;
 }
+
+@media (max-width: 768px) {
+  .bingo-board {
+    grid-template-columns: repeat(5, 40px);
+    grid-template-rows: repeat(5, 40px);
+  }
+}
+
+@media (max-width: 480px) {
+  .bingo-board {
+    grid-template-columns: repeat(5, 30px);
+    grid-template-rows: repeat(5, 30px);
+  }
+}
