@@ -5,6 +5,7 @@ const resetButton = document.getElementById("reset-game");
 const turnInfo = document.getElementById("turn-info");
 const winnerInfo = document.getElementById("winner-info");
 const modeBackBtn = document.getElementById("mode-back-btn");
+
 // Promo screen elements
 const promoOverlay = document.getElementById("promo-overlay");
 const promoStartBtn = document.getElementById("promo-start");
@@ -20,7 +21,7 @@ const tossButtons = document.querySelectorAll(".toss-choice");
 const tossResult = document.getElementById("toss-result");
 
 // ===== GAME STATE =====
-let vsComputer = true;      // Will be set by mode selection
+let vsComputer = true;
 let currentPlayer = 1;
 let player1Board = [];
 let player2Board = [];
@@ -46,6 +47,8 @@ function hideModeSelection() {
 }
 
 function showToss() {
+  tossResult.textContent = ""; // Clear previous toss result
+  tossButtons.forEach(b => b.disabled = false); // Re-enable toss buttons
   tossOverlay.classList.remove("hidden");
 }
 
@@ -56,7 +59,6 @@ function hideToss() {
 // ===== COIN TOSS HANDLER =====
 tossButtons.forEach(btn => {
   btn.addEventListener("click", () => {
-    // disable choices to prevent multiple tosses
     tossButtons.forEach(b => b.disabled = true);
 
     let player1Choice = btn.dataset.choice;
@@ -76,17 +78,19 @@ tossButtons.forEach(btn => {
         hideToss();
         startGame();
         turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+
         if (currentPlayer === 1) {
           board1.parentElement.classList.remove("hidden-board");
           board2.parentElement.classList.add("hidden-board");
         } else {
           board2.parentElement.classList.remove("hidden-board");
           board1.parentElement.classList.add("hidden-board");
+
           if (vsComputer && currentPlayer === 2) {
             setTimeout(computerTurn, 600);
           }
         }
-        // re-enable toss buttons for next game
+
         tossButtons.forEach(b => b.disabled = false);
       }, 1500);
     }, 1000);
@@ -184,7 +188,6 @@ function strikeNumber(cell, number, player) {
 
   cell.classList.add("strike");
 
-  // Strike same number on opponent's board
   let opponentBoardEl = player === 1 ? board2 : board1;
   Array.from(opponentBoardEl.querySelectorAll("div")).forEach(c => {
     if (parseInt(c.textContent) === number && !c.classList.contains("strike")) {
@@ -236,17 +239,14 @@ function updateTurn() {
 
     if (vsComputer) {
       if (currentPlayer === 1) {
-        // Show user board, hide computer board
         board1.parentElement.classList.remove("hidden-board");
         board2.parentElement.classList.add("hidden-board");
       } else {
-        // Computer's turn: hide both boards during computer's move
         board1.parentElement.classList.add("hidden-board");
         board2.parentElement.classList.add("hidden-board");
         setTimeout(computerTurn, 500);
       }
     } else {
-      // Multiplayer: show current player's board only
       if (currentPlayer === 1) {
         board1.parentElement.classList.remove("hidden-board");
         board2.parentElement.classList.add("hidden-board");
@@ -286,22 +286,19 @@ function startGame() {
 }
 
 // ===== EVENT LISTENERS =====
-
-// Promo start button: hide promo, show mode selection overlay
 promoStartBtn.addEventListener("click", () => {
   hidePromoOverlay();
   showModeSelection();
 });
 
-// Mode selection buttons
 vsComputerBtn.addEventListener("click", () => {
   vsComputer = true;
   hideModeSelection();
-  currentPlayer = 1; // Player 1 always starts vs computer
+  currentPlayer = 1;
   startGame();
   turnInfo.textContent = `Player ${currentPlayer}'s turn`;
-  board1.parentElement.classList.remove("hidden-board"); // Show user board
-  board2.parentElement.classList.add("hidden-board");    // Hide computer board
+  board1.parentElement.classList.remove("hidden-board");
+  board2.parentElement.classList.add("hidden-board");
 });
 
 multiplayerBtn.addEventListener("click", () => {
@@ -310,7 +307,6 @@ multiplayerBtn.addEventListener("click", () => {
   showToss();
 });
 
-// Restart button: return to promo overlay and reset game
 resetButton.addEventListener("click", () => {
   hideToss();
   showPromoOverlay();
@@ -320,19 +316,16 @@ resetButton.addEventListener("click", () => {
   gameOver = false;
   player1StruckLines.clear();
   player2StruckLines.clear();
-
-  // Hide both boards at this stage
   board1.parentElement.classList.add("hidden-board");
   board2.parentElement.classList.add("hidden-board");
 });
 
-// Show promo overlay on page load and hide mode selection
 document.addEventListener("DOMContentLoaded", () => {
   showPromoOverlay();
   modeSelectionOverlay.classList.add("hidden");
 });
+
 modeBackBtn.addEventListener("click", () => {
   hideModeSelection();
   showPromoOverlay();
 });
-
