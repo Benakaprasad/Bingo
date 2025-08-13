@@ -1,129 +1,334 @@
+// ===== GET ELEMENTS =====
 const board1 = document.getElementById("board1");
 const board2 = document.getElementById("board2");
 const resetButton = document.getElementById("reset-game");
 const turnInfo = document.getElementById("turn-info");
 const winnerInfo = document.getElementById("winner-info");
 
+// Promo screen elements
+const promoOverlay = document.getElementById("promo-overlay");
+const promoStartBtn = document.getElementById("promo-start");
+
+// Mode Selection overlay elements
+const modeSelectionOverlay = document.getElementById("mode-selection-overlay");
+const vsComputerBtn = document.getElementById("vs-computer-btn");
+const multiplayerBtn = document.getElementById("multiplayer-btn");
+
+// Toss overlay elements
+const tossOverlay = document.getElementById("toss-overlay");
+const tossButtons = document.querySelectorAll(".toss-choice");
+const tossResult = document.getElementById("toss-result");
+
+// ===== GAME STATE =====
+let vsComputer = true;      // Will be set by mode selection
 let currentPlayer = 1;
 let player1Board = [];
 let player2Board = [];
-let player1StruckLines = [];
-let player2StruckLines = [];
-let allNumbers = Array.from({ length: 25 }, (_, i) => i + 1); // Numbers between 1 and 25
-let gameOver = false; // Track whether the game is over
+let player1StruckLines = new Set();
+let player2StruckLines = new Set();
+let gameOver = false;
 
-// Function to generate a Bingo board with numbers between 1 and 25
+// ===== OVERLAY CONTROLS =====
+function showPromoOverlay() {
+  promoOverlay.classList.remove("hidden");
+}
+
+function hidePromoOverlay() {
+  promoOverlay.classList.add("hidden");
+}
+
+function showModeSelection() {
+  modeSelectionOverlay.classList.remove("hidden");
+}
+
+function hideModeSelection() {
+  modeSelectionOverlay.classList.add("hidden");
+}
+
+function showToss() {
+  tossOverlay.classList.remove("hidden");
+}
+
+function hideToss() {
+  tossOverlay.classList.add("hidden");
+}
+
+// ===== COIN TOSS HANDLER =====
+tossButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    // disable choices to prevent multiple tosses
+    tossButtons.forEach(b => b.disabled = true);
+
+    let player1Choice = btn.dataset.choice;
+    let tossOutcome = Math.random() < 0.5 ? "heads" : "tails";
+    tossResult.textContent = `Coin landed on ${tossOutcome.toUpperCase()}!`;
+
+    setTimeout(() => {
+      if (player1Choice === tossOutcome) {
+        tossResult.textContent += " Player 1 wins toss!";
+        currentPlayer = 1;
+      } else {
+        tossResult.textContent += " Player 2 wins toss!";
+        currentPlayer = 2;
+      }
+
+      setTimeout(() => {
+        hideToss();
+        startGame();
+        turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+        if (currentPlayer === 1) {
+          board1.parentElement.classList.remove("hidden-board");
+          board2.parentElement.classList.add("hidden-board");
+        } else {
+          board2.parentElement.classList.remove("hidden-board");
+          board1.parentElement.classList.add("hidden-board");
+          if (vsComputer && currentPlayer === 2) {
+            setTimeout(computerTurn, 600);
+          }
+        }
+        // re-enable toss buttons for next game
+        tossButtons.forEach(b => b.disabled = false);
+      }, 1500);
+    }, 1000);
+  });
+});
+
+// ===== VS COMPUTER HELPERS =====
+function getUnstruckNumbers(boardEl) {
+  return Array.from(boardEl.querySelectorAll("div"))
+    .filter(c => !c.classList.contains("strike"))
+    .map(c => parseInt(c.textContent));
+}
+
+function pickComputerNumber() {
+  const boardEl = board2;
+  const cells = Array.from(boardEl.querySelectorAll("div"));
+  const lines = [
+    [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+    [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+    [0,6,12,18,24],[4,8,12,16,20]
+  ];
+  const scores = new Map();
+  lines.forEach(line => {
+    const struckCount = line.filter(i => cells[i].classList.contains("strike")).length;
+    if (struckCount >= 4) {
+      line.forEach(i => {
+        if (!cells[i].classList.contains("strike")) {
+          const n = parseInt(cells[i].textContent);
+          scores.set(n, (scores.get(n) || 0) + 2);
+        }
+      });
+    } else if (struckCount >= 2) {
+      line.forEach(i => {
+        if (!cells[i].classList.contains("strike")) {
+          const n = parseInt(cells[i].textContent);
+          scores.set(n, (scores.get(n) || 0) + 1);
+        }
+      });
+    }
+  });
+  const remaining = getUnstruckNumbers(boardEl);
+  if (remaining.length === 0) return null;
+  if (scores.size > 0) {
+    let best = null, bestScore = -Infinity;
+    remaining.forEach(n => {
+      const s = scores.get(n) || 0;
+      if (s > bestScore) {
+        bestScore = s;
+        best = n;
+      }
+    });
+    return best ?? remaining[Math.floor(Math.random() * remaining.length)];
+  } else {
+    return remaining[Math.floor(Math.random() * remaining.length)];
+  }
+}
+
+function computerTurn() {
+  if (!vsComputer || gameOver || currentPlayer !== 2) return;
+  const choice = pickComputerNumber();
+  if (choice == null) return;
+  const target = Array.from(board2.querySelectorAll("div"))
+    .find(c => parseInt(c.textContent) === choice && !c.classList.contains("strike"));
+  if (target) strikeNumber(target, choice, 2);
+}
+
+// ===== GENERATE UNIQUE RANDOM BOARD =====
 function generateBoard() {
   let numbers = [];
   while (numbers.length < 25) {
-    let num = Math.floor(Math.random() * 25) + 1; // Numbers between 1 and 25
-    if (!numbers.includes(num)) {
-      numbers.push(num);
-    }
+    let num = Math.floor(Math.random() * 25) + 1;
+    if (!numbers.includes(num)) numbers.push(num);
   }
   return numbers;
 }
 
-// Function to create the 5x5 grid for Bingo
+// ===== CREATE BOARD =====
 function createBoard(boardElement, boardArray, player) {
   boardElement.innerHTML = "";
   for (let i = 0; i < 25; i++) {
     let cell = document.createElement("div");
     cell.textContent = boardArray[i];
-    cell.addEventListener("click", () => strikeNumber(cell, boardArray[i], player));
+    cell.addEventListener("click", () => {
+      if (currentPlayer === player && !gameOver) {
+        strikeNumber(cell, boardArray[i], player);
+      }
+    });
     boardElement.appendChild(cell);
   }
 }
 
-// Function to strike a number on the board
+// ===== STRIKE NUMBER =====
 function strikeNumber(cell, number, player) {
-  if (gameOver) return; // Stop if the game is over
+  if (cell.classList.contains("strike") || gameOver) return;
 
-  if (!cell.classList.contains("strike")) {
-    cell.classList.add("strike"); // Turns the struck number red
-    if (player === 1) {
-      player1Board.splice(player1Board.indexOf(number), 1);
-    } else {
-      player2Board.splice(player2Board.indexOf(number), 1);
+  cell.classList.add("strike");
+
+  // Strike same number on opponent's board
+  let opponentBoardEl = player === 1 ? board2 : board1;
+  Array.from(opponentBoardEl.querySelectorAll("div")).forEach(c => {
+    if (parseInt(c.textContent) === number && !c.classList.contains("strike")) {
+      c.classList.add("strike");
     }
+  });
 
-    // Check for Bingo after striking a number
-    checkForBingo(player);
+  document.getElementById("current-number").textContent =
+    `Player ${player} chose number ${number}`;
+
+  checkForBingo(player);
+  checkForBingo(player === 1 ? 2 : 1);
+
+  if (!gameOver) {
+    updateTurn();
   }
 }
 
-// Function to check for Bingo (5 full rows, columns, or diagonals)
+// ===== CHECK FOR BINGO =====
 function checkForBingo(player) {
-  const board = player === 1 ? board1 : board2;
-  const cells = board.querySelectorAll('div');
-
+  const boardEl = player === 1 ? board1 : board2;
+  const struckLinesSet = player === 1 ? player1StruckLines : player2StruckLines;
+  const cells = boardEl.querySelectorAll("div");
   const winningLines = [
-    // Rows
-    [0, 1, 2, 3, 4],
-    [5, 6, 7, 8, 9],
-    [10, 11, 12, 13, 14],
-    [15, 16, 17, 18, 19],
-    [20, 21, 22, 23, 24],
-    // Columns
-    [0, 5, 10, 15, 20],
-    [1, 6, 11, 16, 21],
-    [2, 7, 12, 17, 22],
-    [3, 8, 13, 18, 23],
-    [4, 9, 14, 19, 24],
-    // Diagonals
-    [0, 6, 12, 18, 24],
-    [4, 8, 12, 16, 20],
+    [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+    [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+    [0,6,12,18,24],[4,8,12,16,20]
   ];
-
-  let struckLines = [];
-
-  // Check all lines to see if they're fully struck
   for (let i = 0; i < winningLines.length; i++) {
     const line = winningLines[i];
-    if (line.every(index => cells[index].classList.contains("strike"))) {
-      struckLines.push(i);
-      line.forEach(index => cells[index].style.backgroundColor = '#66ff66'); // Highlight winning line in green
+    if (line.every(idx => cells[idx].classList.contains("strike"))) {
+      if (!struckLinesSet.has(i)) {
+        struckLinesSet.add(i);
+        line.forEach(idx => (cells[idx].style.backgroundColor = "#66ff66"));
+      }
     }
   }
+  if (struckLinesSet.size >= 5 && !gameOver) {
+    winnerInfo.textContent = `🎉 Player ${player} wins with ${struckLinesSet.size} lines!`;
+    gameOver = true;
+  }
+}
 
-  // Now check if the player has struck at least 5 full lines
-  if (struckLines.length >= 5) {
-    gameOver = true; // Stop the game after 5 lines
-    winnerInfo.textContent = `Player ${player} wins with ${struckLines.length} lines!`;
-    if (player === 1) {
-      player1StruckLines = struckLines;
+// ===== UPDATE TURN =====
+function updateTurn() {
+  if (!gameOver) {
+    currentPlayer = currentPlayer === 1 ? 2 : 1;
+    turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+
+    if (vsComputer) {
+      if (currentPlayer === 1) {
+        // Show user board, hide computer board
+        board1.parentElement.classList.remove("hidden-board");
+        board2.parentElement.classList.add("hidden-board");
+      } else {
+        // Computer's turn: hide both boards during computer's move
+        board1.parentElement.classList.add("hidden-board");
+        board2.parentElement.classList.add("hidden-board");
+        setTimeout(computerTurn, 500);
+      }
     } else {
-      player2StruckLines = struckLines;
+      // Multiplayer: show current player's board only
+      if (currentPlayer === 1) {
+        board1.parentElement.classList.remove("hidden-board");
+        board2.parentElement.classList.add("hidden-board");
+      } else {
+        board2.parentElement.classList.remove("hidden-board");
+        board1.parentElement.classList.add("hidden-board");
+      }
     }
   }
 }
 
-// Function to start the game
+// ===== START GAME =====
 function startGame() {
   player1Board = generateBoard();
   player2Board = generateBoard();
   createBoard(board1, player1Board, 1);
   createBoard(board2, player2Board, 2);
-  player1StruckLines = [];
-  player2StruckLines = [];
-  winnerInfo.textContent = ""; // Clear any winner message
-  turnInfo.textContent = "Player 1's turn";
-  gameOver = false; // Reset the game status
+  player1StruckLines.clear();
+  player2StruckLines.clear();
+  winnerInfo.textContent = "";
+  turnInfo.textContent = "";
+  document.getElementById("current-number").textContent = "";
+  gameOver = false;
+
+  if (vsComputer) {
+    board1.parentElement.classList.remove("hidden-board");
+    board2.parentElement.classList.add("hidden-board");
+  } else {
+    if (currentPlayer === 1) {
+      board1.parentElement.classList.remove("hidden-board");
+      board2.parentElement.classList.add("hidden-board");
+    } else {
+      board2.parentElement.classList.remove("hidden-board");
+      board1.parentElement.classList.add("hidden-board");
+    }
+  }
 }
 
-// Function to reset the game
-function resetGame() {
-  startGame(); // Calls startGame to reset everything
-}
+// ===== EVENT LISTENERS =====
 
-// Start the game when the page loads
-startGame();
+// Promo start button: hide promo, show mode selection overlay
+promoStartBtn.addEventListener("click", () => {
+  hidePromoOverlay();
+  showModeSelection();
+});
 
-// Event listener
-resetButton.addEventListener("click", resetGame);
+// Mode selection buttons
+vsComputerBtn.addEventListener("click", () => {
+  vsComputer = true;
+  hideModeSelection();
+  currentPlayer = 1; // Player 1 always starts vs computer
+  startGame();
+  turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+  board1.parentElement.classList.remove("hidden-board"); // Show user board
+  board2.parentElement.classList.add("hidden-board");    // Hide computer board
+});
 
-// Start the game when the page loads
-startGame();
+multiplayerBtn.addEventListener("click", () => {
+  vsComputer = false;
+  hideModeSelection();
+  showToss();
+});
 
-// Event listener
-resetButton.addEventListener("click", resetGame);
+// Restart button: return to promo overlay and reset game
+resetButton.addEventListener("click", () => {
+  hideToss();
+  showPromoOverlay();
+  winnerInfo.textContent = "";
+  turnInfo.textContent = "";
+  document.getElementById("current-number").textContent = "";
+  gameOver = false;
+  player1StruckLines.clear();
+  player2StruckLines.clear();
+
+  // Hide both boards at this stage
+  board1.parentElement.classList.add("hidden-board");
+  board2.parentElement.classList.add("hidden-board");
+});
+
+// Show promo overlay on page load and hide mode selection
+document.addEventListener("DOMContentLoaded", () => {
+  showPromoOverlay();
+  modeSelectionOverlay.classList.add("hidden");
+});
+
