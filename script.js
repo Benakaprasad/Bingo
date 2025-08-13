@@ -4,7 +4,7 @@ const board2 = document.getElementById("board2");
 const resetButton = document.getElementById("reset-game");
 const turnInfo = document.getElementById("turn-info");
 const winnerInfo = document.getElementById("winner-info");
-
+const modeBackBtn = document.getElementById("mode-back-btn");
 // Promo screen elements
 const promoOverlay = document.getElementById("promo-overlay");
 const promoStartBtn = document.getElementById("promo-start");
@@ -330,5 +330,9 @@ resetButton.addEventListener("click", () => {
 document.addEventListener("DOMContentLoaded", () => {
   showPromoOverlay();
   modeSelectionOverlay.classList.add("hidden");
+});
+modeBackBtn.addEventListener("click", () => {
+  hideModeSelection();
+  showPromoOverlay();
 });
 
