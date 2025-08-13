@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bingo Game</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
 </head>
 <body>
   <!-- Promo Overlay -->
@@ -12,32 +13,39 @@
     <div class="promo-card">
       <h1>Welcome to Bingo!</h1>
       <p>Get ready for a fun, fast-paced 2‑player Bingo match.</p>
-      <button id="promo-start">Start Game</button>
+      <button id="promo-start" class="btn-primary">Start Game</button>
     </div>
   </div>
 
   <!-- Mode Selection Overlay -->
-  <div id="mode-selection-overlay" class="promo-overlay hidden">
-    <div class="promo-card">
-      <h1>Select Game Mode</h1>
-      <button id="vs-computer-btn">Play vs Computer</button>
-      <button id="multiplayer-btn">Play Multiplayer</button>
+  <!-- Mode Selection Overlay -->
+<div id="mode-selection-overlay" class="promo-overlay hidden">
+  <div class="promo-card mode-selection-card">
+    <h1>Choose Your Game Mode</h1>
+    <div class="mode-buttons">
+      <button id="vs-computer-btn" class="btn-mode" aria-label="Play against the Computer">Play Against Computer</button>
+      <button id="multiplayer-btn" class="btn-mode" aria-label="Play with a Friend">Multiplayer Challenge</button>
     </div>
+    <button id="mode-back-btn" class="btn-secondary">Back</button>
   </div>
+</div>
+
 
   <!-- Coin Toss Overlay -->
   <div id="toss-overlay" class="promo-overlay hidden">
     <div class="promo-card">
       <h1>Coin Toss</h1>
       <p>Player 1, choose Heads or Tails:</p>
-      <button class="toss-choice" data-choice="heads">Heads</button>
-      <button class="toss-choice" data-choice="tails">Tails</button>
-      <p id="toss-result" style="margin-top:15px;font-weight:bold;"></p>
+      <div class="toss-buttons">
+        <button class="toss-choice btn-toss" data-choice="heads">Heads</button>
+        <button class="toss-choice btn-toss" data-choice="tails">Tails</button>
+      </div>
+      <p id="toss-result" class="toss-result"></p>
     </div>
   </div>
 
   <div class="game-container">
-    <h1>Bingo Game</h1>
+    <h1 class="game-title">Bingo Game</h1>
     <div class="players">
       <div class="player-board" id="player1-board">
         <h2>Player 1</h2>
@@ -52,14 +60,13 @@
 
     <div class="number-bar">
       <p id="current-number"></p>
-      <button id="reset-game">Restart Game</button>
-      <!-- Removed Show Promo button and vs computer checkbox -->
+      <button id="reset-game" class="btn-primary">Restart Game</button>
     </div>
 
-    <p id="turn-info"></p>
-    <p id="winner-info" style="color: green; font-weight: bold;"></p>
+    <p id="turn-info" class="turn-info"></p>
+    <p id="winner-info" class="winner-info"></p>
   </div>
-
+   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" crossorigin="anonymous"></script>
   <script src="script.js"></script>
 </body>
 </html>
