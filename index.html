@@ -1,22 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bingo Game</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Promo Overlay -->
+  <div id="promo-overlay" class="promo-overlay">
+    <div class="promo-card">
+      <h1>Welcome to Bingo!</h1>
+      <p>Get ready for a fun, fast-paced 2‑player Bingo match.</p>
+      <button id="promo-start">Start Game</button>
+    </div>
+  </div>
+
+  <!-- Mode Selection Overlay -->
+  <div id="mode-selection-overlay" class="promo-overlay hidden">
+    <div class="promo-card">
+      <h1>Select Game Mode</h1>
+      <button id="vs-computer-btn">Play vs Computer</button>
+      <button id="multiplayer-btn">Play Multiplayer</button>
+    </div>
+  </div>
+
+  <!-- Coin Toss Overlay -->
+  <div id="toss-overlay" class="promo-overlay hidden">
+    <div class="promo-card">
+      <h1>Coin Toss</h1>
+      <p>Player 1, choose Heads or Tails:</p>
+      <button class="toss-choice" data-choice="heads">Heads</button>
+      <button class="toss-choice" data-choice="tails">Tails</button>
+      <p id="toss-result" style="margin-top:15px;font-weight:bold;"></p>
+    </div>
+  </div>
+
   <div class="game-container">
     <h1>Bingo Game</h1>
     <div class="players">
-      <!-- Player 1's Table -->
       <div class="player-board" id="player1-board">
         <h2>Player 1</h2>
         <div class="bingo-board" id="board1"></div>
       </div>
 
-      <!-- Player 2's Table -->
       <div class="player-board" id="player2-board">
         <h2>Player 2</h2>
         <div class="bingo-board" id="board2"></div>
@@ -26,10 +53,11 @@
     <div class="number-bar">
       <p id="current-number"></p>
       <button id="reset-game">Restart Game</button>
+      <!-- Removed Show Promo button and vs computer checkbox -->
     </div>
 
-    <p id="turn-info">Player 1's turn</p>
-    <p id="winner-info" style="color: green; font-weight: bold;"></p> <!-- Added for winner message -->
+    <p id="turn-info"></p>
+    <p id="winner-info" style="color: green; font-weight: bold;"></p>
   </div>
 
   <script src="script.js"></script>
