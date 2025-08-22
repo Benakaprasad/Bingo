@@ -34,5 +34,3 @@ Players alternate turns, striking numbers on their respective boards.
 The first to strike 5 lines of boxes wins the match, earning ultimate bragging rights.
 
 Get ready to enjoy a fast-paced, exciting Bingo game that tests your luck, strategy, and anticipation. Whether playing solo or with friends, every match guarantees fun and suspense. Good luck, and may the best player win!
-
-Feel free to customize or let me know if you want it more formal, fun, or technical!
