@@ -74,6 +74,13 @@ function showToss(allowChoice = false) {
 function hideToss() {
   tossOverlay.classList.add("hidden");
 }
+function getPlayerDisplayName(playerNumber) {
+  if (vsComputer) {
+    return playerNumber === 1 ? playerName : "Jimmy";
+  } else {
+    return playerNumber === 1 ? player1Name || "Player 1" : player2Name || "Player 2";
+  }
+}
 
 // ===== POPUP MESSAGE FUNCTION =====
 function showPopupMessage(message, duration = 3000) {
@@ -208,21 +215,6 @@ function generateBoard() {
 }
 
 // ===== CREATE BOARD =====
-function createBoard(boardElement, boardArray, player) {
-  boardElement.innerHTML = "";
-  for (let i = 0; i < 25; i++) {
-    let cell = document.createElement("div");
-    cell.textContent = boardArray[i];
-    cell.addEventListener("click", () => {
-      if (currentPlayer === player && !gameOver) {
-        strikeNumber(cell, boardArray[i], player);
-      }
-    });
-    boardElement.appendChild(cell);
-  }
-}
-
-// ===== STRIKE NUMBER =====
 function strikeNumber(cell, number, player, isRemote = false) {
   if (cell.classList.contains("strike") || gameOver) return;
 
@@ -241,7 +233,9 @@ function strikeNumber(cell, number, player, isRemote = false) {
     }
   });
 
-  currentNumberDisplay.textContent = `Player ${player} chose number ${number}`;
+  // Use display name for player in message
+  const displayName = getPlayerDisplayName(player);
+  currentNumberDisplay.textContent = `${displayName} chose number ${number}`;
 
   checkForBingo(player);
   checkForBingo(player === 1 ? 2 : 1);
@@ -250,7 +244,6 @@ function strikeNumber(cell, number, player, isRemote = false) {
     updateTurn();
   }
 }
-
 // ===== CHECK FOR BINGO =====
 function checkForBingo(player) {
   const boardEl = player === 1 ? board1 : board2;
