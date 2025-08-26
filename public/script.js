@@ -546,6 +546,19 @@ vsComputerBtn.addEventListener("click", () => {
   vsComputer = true;
   isMultiplayer = false;
   hideModeSelection();
+
+  // Prompt player for name
+  playerName = prompt("Enter your name:");
+  if (!playerName || !playerName.trim()) {
+    playerName = "Player 1"; // default if empty
+  }
+
+  // Update player 1 board title with playerName
+  document.querySelector("#player1-board h2").textContent = playerName;
+
+  // Set computer name as 'Jimmy' for player 2 board title
+  document.querySelector("#player2-board h2").textContent = "Jimmy";
+
   currentPlayer = 1; // Player 1 always starts vs computer
   startGame();
   turnInfo.textContent = `Player ${currentPlayer}'s turn`;
