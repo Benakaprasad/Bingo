@@ -74,13 +74,7 @@ function showToss(allowChoice = false) {
 function hideToss() {
   tossOverlay.classList.add("hidden");
 }
-function getPlayerDisplayName(playerNumber) {
-  if (vsComputer) {
-    return playerNumber === 1 ? playerName : "Jimmy";
-  } else {
-    return playerNumber === 1 ? player1Name || "Player 1" : player2Name || "Player 2";
-  }
-}
+
 
 // ===== POPUP MESSAGE FUNCTION =====
 function showPopupMessage(message, duration = 3000) {
@@ -147,6 +141,13 @@ function showPopupMessage(message, duration = 3000) {
 }
 
 // ===== VS COMPUTER HELPERS =====
+function getPlayerDisplayName(playerNumber) {
+  if (vsComputer) {
+    return playerNumber === 1 ? playerName : "Jimmy";
+  } else {
+    return playerNumber === 1 ? player1Name || "Player 1" : player2Name || "Player 2";
+  }
+}
 function getUnstruckNumbers(boardEl) {
   return Array.from(boardEl.querySelectorAll("div"))
     .filter(c => !c.classList.contains("strike"))
