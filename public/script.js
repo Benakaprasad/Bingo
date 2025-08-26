@@ -1,4 +1,4 @@
-// ===== GET ELEMENTS =====
+// ======== ELEMENTS ========
 const board1 = document.getElementById("board1");
 const board2 = document.getElementById("board2");
 const resetButton = document.getElementById("reset-game");
@@ -24,138 +24,91 @@ modeBackBtn.addEventListener("click", () => {
   showPromoOverlay();
 });
 
-// ===== GAME STATE =====
+// ======== GAME STATE ========
 let vsComputer = true;
 let isMultiplayer = false;
 let socket = null;
-let multiplayerGameId = null;
 let currentPlayer = 1;
 let player1Board = [];
 let player2Board = [];
 let player1StruckLines = new Set();
 let player2StruckLines = new Set();
 let gameOver = false;
-
 let playerName = "";
 let playerIndex = null;
 let roomId = null;
 
-// ===== OVERLAY CONTROLS =====
-function showPromoOverlay() {
-  promoOverlay.classList.remove("hidden");
-}
-function hidePromoOverlay() {
-  promoOverlay.classList.add("hidden");
-}
-function showModeSelection() {
-  modeSelectionOverlay.classList.remove("hidden");
-}
-function hideModeSelection() {
-  modeSelectionOverlay.classList.add("hidden");
-}
+// ======== OVERLAY CONTROLS ========
+function showPromoOverlay() { promoOverlay.classList.remove("hidden"); }
+function hidePromoOverlay() { promoOverlay.classList.add("hidden"); }
+function showModeSelection() { modeSelectionOverlay.classList.remove("hidden"); }
+function hideModeSelection() { modeSelectionOverlay.classList.add("hidden"); }
 function showToss(allowChoice = false) {
   tossOverlay.classList.remove("hidden");
-  if (!isMultiplayer) {
+  if (isMultiplayer) {
+    tossResult.textContent = allowChoice ? "Choose Head or Tail" : "Waiting for toss result from server...";
+    tossButtons.forEach(b => b.disabled = !allowChoice);
+  } else {
     tossResult.textContent = "";
     tossButtons.forEach(b => b.disabled = false);
-  } else {
-    if (allowChoice) {
-      tossResult.textContent = "Choose Head or Tail";
-      tossButtons.forEach(b => b.disabled = false);
-    } else {
-      tossResult.textContent = "Waiting for toss result from server...";
-      tossButtons.forEach(b => b.disabled = true);
-    }
   }
 }
-function hideToss() {
-  tossOverlay.classList.add("hidden");
-}
+function hideToss() { tossOverlay.classList.add("hidden"); }
 
-function showPlayAgainButton() {
-  playAgainButton.classList.remove("hidden");
-}
-function hidePlayAgainButton() {
-  playAgainButton.classList.add("hidden");
-}
+function showPlayAgainButton() { playAgainButton.classList.remove("hidden"); }
+function hidePlayAgainButton() { playAgainButton.classList.add("hidden"); }
 
-// ===== POPUP MESSAGE FUNCTION =====
+// ======== POPUP MESSAGE ========
 function showPopupMessage(message, duration = 3000) {
-  const popup = document.createElement('div');
+  const popup = document.createElement("div");
   popup.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
+    position: fixed; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 20px 30px;
-    border-radius: 10px;
-    font-size: 18px;
-    font-weight: bold;
-    text-align: center;
+    color: white; padding: 20px 30px;
+    border-radius: 10px; font-size: 18px;
+    font-weight: bold; text-align: center;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    z-index: 10000;
-    animation: popupSlideIn 0.3s ease-out;
+    z-index: 10000; animation: popupSlideIn 0.3s ease-out;
   `;
-
   if (!document.getElementById('popup-styles')) {
     const style = document.createElement('style');
     style.id = 'popup-styles';
     style.textContent = `
       @keyframes popupSlideIn {
-        from {
-          opacity: 0;
-          transform: translate(-50%, -50%) scale(0.8);
-        }
-        to {
-          opacity: 1;
-          transform: translate(-50%, -50%) scale(1);
-        }
+        from {opacity: 0; transform: translate(-50%, -50%) scale(0.8);}
+        to {opacity: 1; transform: translate(-50%, -50%) scale(1);}
       }
       @keyframes popupSlideOut {
-        from {
-          opacity: 1;
-          transform: translate(-50%, -50%) scale(1);
-        }
-        to {
-          opacity: 0;
-          transform: translate(-50%, -50%) scale(0.8);
-        }
+        from {opacity: 1; transform: translate(-50%, -50%) scale(1);}
+        to {opacity: 0; transform: translate(-50%, -50%) scale(0.8);}
       }
     `;
     document.head.appendChild(style);
   }
-
   popup.textContent = message;
   document.body.appendChild(popup);
-
   setTimeout(() => {
     popup.style.animation = 'popupSlideOut 0.3s ease-out';
-    setTimeout(() => {
-      if (popup.parentNode) {
-        popup.parentNode.removeChild(popup);
-      }
-    }, 300);
+    setTimeout(() => popup.remove(), 300);
   }, duration);
 }
 
-// ===== VS COMPUTER HELPERS =====
-function getPlayerDisplayName(playerNumber) {
-  if (vsComputer) {
-    return playerNumber === 1 ? playerName : "Jimmy";
-  } else {
-    return playerNumber === 1 ? "Player 1" : "Player 2";
-  }
+// ======== PLAYER–VERSUS–COMPUTER HELPERS ========
+function getPlayerDisplayName(player) {
+  return vsComputer
+    ? (player === 1 ? playerName : "Jimmy")
+    : (player === 1 ? "Player 1" : "Player 2");
 }
+
 function getUnstruckNumbers(boardEl) {
   return Array.from(boardEl.querySelectorAll("div"))
     .filter(c => !c.classList.contains("strike"))
     .map(c => parseInt(c.textContent, 10));
 }
+
 function pickComputerNumber() {
-  const boardEl = board2;
-  const cells = Array.from(boardEl.querySelectorAll("div"));
+  const cells = Array.from(board2.querySelectorAll("div"));
   const lines = [
     [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
     [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
@@ -164,25 +117,19 @@ function pickComputerNumber() {
   const scores = new Map();
   lines.forEach(line => {
     const struckCount = line.filter(i => cells[i].classList.contains("strike")).length;
-    if (struckCount >= 4) {
+    if (struckCount >= 4 || struckCount >= 2) {
+      const weight = struckCount >= 4 ? 2 : 1;
       line.forEach(i => {
         if (!cells[i].classList.contains("strike")) {
-          const n = parseInt(cells[i].textContent, 10);
-          scores.set(n, (scores.get(n) || 0) + 2);
-        }
-      });
-    } else if (struckCount >= 2) {
-      line.forEach(i => {
-        if (!cells[i].classList.contains("strike")) {
-          const n = parseInt(cells[i].textContent, 10);
-          scores.set(n, (scores.get(n) || 0) + 1);
+          const num = parseInt(cells[i].textContent, 10);
+          scores.set(num, (scores.get(num) || 0) + weight);
         }
       });
     }
   });
-  const remaining = getUnstruckNumbers(boardEl);
-  if (remaining.length === 0) return null;
-  if (scores.size > 0) {
+  const remaining = getUnstruckNumbers(board2);
+  if (!remaining.length) return null;
+  if (scores.size) {
     let best = null, bestScore = -Infinity;
     remaining.forEach(n => {
       const s = scores.get(n) || 0;
@@ -192,10 +139,10 @@ function pickComputerNumber() {
       }
     });
     return best ?? remaining[Math.floor(Math.random() * remaining.length)];
-  } else {
-    return remaining[Math.floor(Math.random() * remaining.length)];
   }
+  return remaining[Math.floor(Math.random() * remaining.length)];
 }
+
 function computerTurn() {
   if (!vsComputer || gameOver || currentPlayer !== 2) return;
   const choice = pickComputerNumber();
@@ -204,96 +151,108 @@ function computerTurn() {
     .find(c => parseInt(c.textContent, 10) === choice && !c.classList.contains("strike"));
   if (target) {
     strikeNumber(target, choice, 2);
-    if (gameOver) return;
+    if (!gameOver) updateTurn();
   }
 }
 
-// ===== BOARD MANAGEMENT =====
+// ======== BOARD SETUP & MANAGEMENT ========
 function generateBoard() {
-  let numbers = [];
-  while (numbers.length < 25) {
-    let num = Math.floor(Math.random() * 25) + 1;
-    if (!numbers.includes(num)) numbers.push(num);
-  }
-  return numbers;
+  const nums = new Set();
+  while (nums.size < 25) nums.add(Math.floor(Math.random() * 25) + 1);
+  return Array.from(nums);
 }
+
 function createBoard(boardEl, numbers, player) {
-  boardEl.innerHTML = '';
+  boardEl.innerHTML = "";
   numbers.forEach(number => {
     const cell = document.createElement("div");
     cell.textContent = number;
     cell.dataset.number = number;
     cell.addEventListener("click", () => {
-      if (!gameOver && currentPlayer === player) {
-        strikeNumber(cell, number, player);
-      } else if (!isMultiplayer && vsComputer && currentPlayer !== player) {
-        showPopupMessage("It's not your turn!", 1500);
+      if (gameOver || (currentPlayer !== player)) {
+        if (!isMultiplayer && vsComputer && currentPlayer !== player)
+          showPopupMessage("It's not your turn!", 1500);
+        return;
       }
+      strikeNumber(cell, number, player);
     });
     boardEl.appendChild(cell);
   });
 }
+
 function strikeNumber(cell, number, player, isRemote = false) {
   if (cell.classList.contains("strike") || gameOver) return;
   cell.classList.add("strike");
-  if (!isRemote && isMultiplayer && socket && !gameOver) {
+  if (isMultiplayer && !isRemote && socket) {
     socket.emit("chooseNumber", { roomId, player, number });
   }
-  let opponentBoardEl = player === 1 ? board2 : board1;
-  Array.from(opponentBoardEl.querySelectorAll("div")).forEach(c => {
-    if (parseInt(c.textContent, 10) === number && !c.classList.contains("strike")) {
+  const opponentBoard = player === 1 ? board2 : board1;
+  Array.from(opponentBoard.querySelectorAll("div")).forEach(c => {
+    if (!c.classList.contains("strike") && parseInt(c.textContent, 10) === number) {
       c.classList.add("strike");
     }
   });
-
-  const displayName = getPlayerDisplayName(player);
-  currentNumberDisplay.textContent = `${displayName} chose number ${number}`;
+  currentNumberDisplay.textContent = `${getPlayerDisplayName(player)} chose number ${number}`;
   checkForBingo(player);
   checkForBingo(player === 1 ? 2 : 1);
-
-  if (!gameOver) updateTurn();
+  if (!gameOver && !(isMultiplayer && vsComputer && currentPlayer === 2)) {
+    updateTurn();
+  }
 }
+
 function checkForBingo(player) {
   const boardEl = player === 1 ? board1 : board2;
   const struckLinesSet = player === 1 ? player1StruckLines : player2StruckLines;
   const cells = boardEl.querySelectorAll("div");
-  const winningLines = [
+  const lines = [
     [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
     [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
     [0,6,12,18,24],[4,8,12,16,20]
   ];
-  for (let i = 0; i < winningLines.length; i++) {
-    const line = winningLines[i];
-    if (line.every(idx => cells[idx].classList.contains("strike"))) {
-      if (!struckLinesSet.has(i)) {
-        struckLinesSet.add(i);
-        line.forEach(idx => (cells[idx].style.backgroundColor = "#66ff66"));
-      }
+  lines.forEach((line, i) => {
+    if (line.every(idx => cells[idx].classList.contains("strike")) && !struckLinesSet.has(i)) {
+      struckLinesSet.add(i);
+      line.forEach(idx => cells[idx].style.backgroundColor = "#66ff66");
     }
-  }
-
-  if (struckLinesSet.size >= 5 && !gameOver) {
+  });
+  if (!gameOver && struckLinesSet.size >= 5) {
     gameOver = true;
     winnerInfo.textContent = `🎉 Player ${player} wins with ${struckLinesSet.size} lines!`;
-    const message = player === 1 ? "🎉 You win!" : "Jimmy wins!";
-    showPopupMessage(message, 5000);
-    showPlayAgainButton();
-  }
-}
-function updateTurn() {
-  currentPlayer = currentPlayer === 1 ? 2 : 1;
-  turnInfo.textContent = `Player ${currentPlayer}'s turn`;
-  if (vsComputer && currentPlayer === 2 && !gameOver) {
-    setTimeout(computerTurn, 800);
+    showPopupMessage(player === playerIndex ? "🎉 You win!" : `Player ${player} wins!`, 5000);
+    document.querySelectorAll("#board1 div, #board2 div").forEach(cell => {
+      cell.style.pointerEvents = "none";
+    });
+    if (isMultiplayer && socket) {
+      socket.emit("playerWon", { roomId, winner: player });
+    } else {
+      showPlayAgainButton();
+    }
   }
 }
 
-// ===== GAME START =====
-function startGame() {
-  player1Board = generateBoard();
-  player2Board = generateBoard();
+function updateTurn() {
+  if (gameOver) return;
+  currentPlayer = currentPlayer === 1 ? 2 : 1;
+  turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+  if (vsComputer && currentPlayer === 2) setTimeout(computerTurn, 500);
+  if (isMultiplayer) socket.emit("turnChanged", { roomId, currentPlayer });
+}
+
+// ======== GAME START & RESET ========
+function startGame(multiplayerBoards = null) {
+  if (multiplayerBoards) {
+    player1Board = multiplayerBoards.player1Board;
+    player2Board = multiplayerBoards.player2Board;
+  } else {
+    player1Board = generateBoard();
+    player2Board = generateBoard();
+  }
   createBoard(board1, player1Board, 1);
   createBoard(board2, player2Board, 2);
+  document.querySelectorAll("#board1 div, #board2 div").forEach(cell => {
+    cell.style.pointerEvents = "auto";
+    cell.style.backgroundColor = "";
+  });
   player1StruckLines.clear();
   player2StruckLines.clear();
   gameOver = false;
@@ -301,9 +260,125 @@ function startGame() {
   currentNumberDisplay.textContent = "";
   hidePlayAgainButton();
   turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+  if (vsComputer && currentPlayer === 2) setTimeout(computerTurn, 500);
 }
 
-// ===== BUTTON EVENTS =====
+// ======== MULTIPLAYER SOCKET SETUP ========
+function initMultiplayer() {
+  playerName = prompt("Enter your name:");
+  if (!playerName) return alert("Name required!");
+  if (!socket) {
+    socket = io();
+    setupSocketEvents();
+  }
+  const action = prompt("Type 'C' to Create Game or enter Room ID to Join:");
+  if (!action) return;
+  if (action.toUpperCase() === "C") {
+    socket.emit("createRoom", { name: playerName });
+  } else {
+    socket.emit("joinRoom", { name: playerName, roomId: action.trim().toUpperCase() });
+  }
+  showToss();
+}
+
+tossButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (isMultiplayer && playerIndex !== null && !btn.disabled) {
+      socket.emit("playerTossChoice", {
+        roomId,
+        player: playerIndex,
+        choice: btn.dataset.choice
+      });
+      tossButtons.forEach(b => b.disabled = true);
+    }
+  });
+});
+
+function setupSocketEvents() {
+  socket.on("roomCreated", data => {
+    roomId = data.roomId;
+    playerIndex = 1;
+    alert(`Room created! ID: ${roomId}`);
+  });
+
+  socket.on("roomJoined", data => {
+    roomId = data.roomId;
+    playerIndex = data.playerIndex;
+    alert(`Joined Room ${roomId} as Player ${playerIndex}`);
+  });
+
+  socket.on("bothPlayersReady", ({ player1Board, player2Board }) => {
+    startGame({ player1Board, player2Board });
+    playerIndex === 1 ? showToss(true) : showToss(false);
+  });
+
+  socket.on("chooseTossCaller", ({ caller }) => {
+    showToss(caller === playerIndex);
+  });
+
+  socket.on("tossResult", ({ startingPlayer, tossWinner }) => {
+    hideToss();
+    currentPlayer = startingPlayer;
+    turnInfo.textContent = `Player ${startingPlayer}'s turn`;
+    showOnlyYourBoard();
+    showPopupMessage(
+      tossWinner === playerIndex ? "🎉 You won the toss!" : `Player ${tossWinner} won the toss!`,
+      4000
+    );
+  });
+
+  socket.on("playerMove", ({ player, number }) => {
+    if (player !== playerIndex) {
+      const ownBoard = playerIndex === 1 ? board1 : board2;
+      const cell = Array.from(ownBoard.querySelectorAll("div"))
+        .find(c => parseInt(c.textContent, 10) === number);
+      if (cell) strikeNumber(cell, number, player, true);
+    }
+  });
+
+  socket.on("turnChanged", ({ currentPlayer: newTurn }) => {
+    currentPlayer = newTurn;
+    turnInfo.textContent = `Player ${newTurn}'s turn`;
+    showOnlyYourBoard();
+  });
+
+  socket.on("playerWon", ({ winner }) => {
+    gameOver = true;
+    showPopupMessage(
+      winner === playerIndex ? "🎉 You win!" : `Player ${winner} wins!`,
+      5000
+    );
+    winnerInfo.textContent = `🎉 Player ${winner} wins the game!`;
+    showPlayAgainButton();
+  });
+
+  socket.on("gameRestarted", ({ player1Board, player2Board, startingPlayer }) => {
+    currentPlayer = startingPlayer;
+    startGame({ player1Board, player2Board });
+    turnInfo.textContent = `Player ${startingPlayer} starts`;
+    showOnlyYourBoard();
+    showPopupMessage("New game started!", 3000);
+  });
+
+  socket.on("playerLeft", () => {
+    alert("Opponent left the game.");
+    location.reload();
+  });
+
+  socket.on("errorMessage", msg => alert(`Error: ${msg}`));
+}
+
+function showOnlyYourBoard() {
+  if (playerIndex === 1) {
+    board1.parentElement.classList.remove("hidden-board");
+    board2.parentElement.classList.add("hidden-board");
+  } else {
+    board1.parentElement.classList.add("hidden-board");
+    board2.parentElement.classList.remove("hidden-board");
+  }
+}
+
+// ======== BUTTON EVENT LISTENERS ========
 promoStartBtn.addEventListener("click", () => {
   hidePromoOverlay();
   showModeSelection();
@@ -322,6 +397,15 @@ vsComputerBtn.addEventListener("click", () => {
   startGame();
 });
 
+multiplayerBtn.addEventListener("click", () => {
+  vsComputer = false;
+  isMultiplayer = true;
+  hideModeSelection();
+  board1.parentElement.classList.remove("hidden-board");
+  board2.parentElement.classList.remove("hidden-board");
+  initMultiplayer();
+});
+
 resetButton.addEventListener("click", () => {
   hideToss();
   showPromoOverlay();
@@ -337,21 +421,23 @@ resetButton.addEventListener("click", () => {
     socket.disconnect();
     socket = null;
   }
-  multiplayerGameId = null;
-  isMultiplayer = false;
   vsComputer = true;
+  isMultiplayer = false;
   currentPlayer = 1;
 });
 
 playAgainButton.addEventListener("click", () => {
-  if (vsComputer) {
+  if (isMultiplayer && socket) {
+    socket.emit("restartGame", { roomId });
+  } else {
     currentPlayer = 1;
     startGame();
   }
 });
 
+// ======== INIT ========
 document.addEventListener("DOMContentLoaded", () => {
   showPromoOverlay();
-  modeSelectionOverlay.classList.add("hidden");
   hidePlayAgainButton();
+  modeSelectionOverlay.classList.add("hidden");
 });
