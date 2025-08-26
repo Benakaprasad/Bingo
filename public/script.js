@@ -5,6 +5,7 @@ const resetButton = document.getElementById("reset-game");
 const turnInfo = document.getElementById("turn-info");
 const winnerInfo = document.getElementById("winner-info");
 const currentNumberDisplay = document.getElementById("current-number");
+const playAgainButton = document.getElementById("play-again-btn");
 
 // Promo screen elements
 const promoOverlay = document.getElementById("promo-overlay");
@@ -75,6 +76,13 @@ function hideToss() {
   tossOverlay.classList.add("hidden");
 }
 
+function showPlayAgainButton() {
+    playAgainButton.classList.remove("hidden");
+}
+
+function hidePlayAgainButton() {
+    playAgainButton.classList.add("hidden");
+}
 
 // ===== POPUP MESSAGE FUNCTION =====
 function showPopupMessage(message, duration = 3000) {
@@ -145,7 +153,11 @@ function getPlayerDisplayName(playerNumber) {
   if (vsComputer) {
     return playerNumber === 1 ? playerName : "Jimmy";
   } else {
-    return playerNumber === 1 ? player1Name || "Player 1" : player2Name || "Player 2";
+    // You'll need to define player1Name and player2Name for multiplayer
+    // For now, these are placeholders
+    const player1Name = "Player 1";
+    const player2Name = "Player 2";
+    return playerNumber === 1 ? player1Name : player2Name;
   }
 }
 function getUnstruckNumbers(boardEl) {
@@ -215,7 +227,25 @@ function generateBoard() {
   return numbers;
 }
 
-// ===== CREATE BOARD =====
+// ===== CREATE BOARD - MISSING FUNCTION ADDED HERE =====
+function createBoard(boardEl, numbers, player) {
+    boardEl.innerHTML = ''; // Clear the board
+    numbers.forEach(number => {
+        const cell = document.createElement("div");
+        cell.textContent = number;
+        cell.dataset.number = number;
+        cell.addEventListener("click", () => {
+            if (!gameOver && currentPlayer === player) {
+                strikeNumber(cell, number, player);
+            } else if (!isMultiplayer && vsComputer && currentPlayer !== player) {
+                showPopupMessage("It's not your turn!", 1500);
+            }
+        });
+        boardEl.appendChild(cell);
+    });
+}
+
+// ===== STRIKE NUMBER FUNCTION =====
 function strikeNumber(cell, number, player, isRemote = false) {
   if (cell.classList.contains("strike") || gameOver) return;
 
@@ -293,8 +323,8 @@ function updateTurn() {
         board1.parentElement.classList.remove("hidden-board");
         board2.parentElement.classList.add("hidden-board");
       } else {
-        board1.parentElement.classList.remove("hidden-board");
-        board2.parentElement.classList.add("hidden-board");
+        board1.parentElement.classList.add("hidden-board");
+        board2.parentElement.classList.remove("hidden-board");
         setTimeout(computerTurn, 500);
       }
     } else {
@@ -334,6 +364,7 @@ function startGame(multiplayerBoards) {
   turnInfo.textContent = "";
   currentNumberDisplay.textContent = "";
   gameOver = false;
+  hidePlayAgainButton(); // Hide the play again button on new game
 
   if (vsComputer) {
     board1.parentElement.classList.remove("hidden-board");
@@ -452,7 +483,7 @@ function setupSocketEvents() {
     
     // Update game state
     currentPlayer = startingPlayer;
-    turnInfo.textContent = `Player ${startingPlayer} starts the game.`;
+    turnInfo.textContent = `Player ${startingPlayer}'s turn`;
     
     // Show only the appropriate board for the current player
     showOnlyYourBoard();
@@ -588,8 +619,21 @@ resetButton.addEventListener("click", () => {
   currentPlayer = 1;
 });
 
+playAgainButton.addEventListener("click", () => {
+    if (isMultiplayer && socket) {
+        socket.emit("restartGame", { roomId });
+    } else if (vsComputer) {
+        startGame();
+        currentPlayer = 1;
+        turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+        board1.parentElement.classList.remove("hidden-board"); // Show user board
+        board2.parentElement.classList.add("hidden-board");    // Hide computer board
+    }
+});
+
 // Show promo overlay on page load and hide mode selection
 document.addEventListener("DOMContentLoaded", () => {
   showPromoOverlay();
   modeSelectionOverlay.classList.add("hidden");
+  hidePlayAgainButton(); // Ensure the play again button is hidden on load
 });
