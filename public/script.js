@@ -153,8 +153,7 @@ function getPlayerDisplayName(playerNumber) {
   if (vsComputer) {
     return playerNumber === 1 ? playerName : "Jimmy";
   } else {
-    // You'll need to define player1Name and player2Name for multiplayer
-    // For now, these are placeholders
+    // These names would be set by the server in multiplayer mode
     const player1Name = "Player 1";
     const player2Name = "Player 2";
     return playerNumber === 1 ? player1Name : player2Name;
@@ -227,7 +226,7 @@ function generateBoard() {
   return numbers;
 }
 
-// ===== CREATE BOARD - MISSING FUNCTION ADDED HERE =====
+// ===== CREATE BOARD =====
 function createBoard(boardEl, numbers, player) {
     boardEl.innerHTML = ''; // Clear the board
     numbers.forEach(number => {
@@ -296,15 +295,12 @@ function checkForBingo(player) {
     winnerInfo.textContent = `🎉 Player ${player} wins with ${struckLinesSet.size} lines!`;
     gameOver = true;
     
-    // Emit winner to server in multiplayer mode
     if (isMultiplayer && socket) {
       socket.emit("playerWon", { roomId, winner: player });
     } else {
-      // For vs computer mode, show play again button immediately
       showPlayAgainButton();
     }
     
-    // Show popup message for winner
     const winnerMessage = player === playerIndex 
       ? `🎉 Congratulations! You won the game!` 
       : `Player ${player} won the game! Better luck next time!`;
@@ -320,14 +316,10 @@ function updateTurn() {
 
     if (vsComputer) {
       if (currentPlayer === 1) {
-        // Show player 1's board (the human)
         board1.parentElement.classList.remove("hidden-board");
-        // Hide player 2's board (the computer)
         board2.parentElement.classList.add("hidden-board");
       } else {
-        // Show player 2's board (the computer)
         board1.parentElement.classList.add("hidden-board");
-        // Hide player 1's board (the human)
         board2.parentElement.classList.remove("hidden-board");
         setTimeout(computerTurn, 500);
       }
@@ -340,11 +332,9 @@ function updateTurn() {
 // ===== HELPER FUNCTION TO SHOW ONLY PLAYER'S BOARD =====
 function showOnlyYourBoard() {
   if (playerIndex === 1) {
-    // Player 1 sees only board1 (their own board)
     board1.parentElement.classList.remove("hidden-board");
     board2.parentElement.classList.add("hidden-board");
   } else if (playerIndex === 2) {
-    // Player 2 sees only board2 (their own board)
     board1.parentElement.classList.add("hidden-board");
     board2.parentElement.classList.remove("hidden-board");
   }
@@ -362,22 +352,14 @@ function startGame(multiplayerBoards) {
 
   createBoard(board1, player1Board, 1);
   createBoard(board2, player2Board, 2);
+  
   player1StruckLines.clear();
   player2StruckLines.clear();
   winnerInfo.textContent = "";
   turnInfo.textContent = "";
   currentNumberDisplay.textContent = "";
   gameOver = false;
-  hidePlayAgainButton(); // Hide the play again button on new game
-
-  if (vsComputer) {
-    board1.parentElement.classList.remove("hidden-board");
-    board2.parentElement.classList.add("hidden-board");
-  } else {
-    // Show both boards before toss result
-    board1.parentElement.classList.remove("hidden-board");
-    board2.parentElement.classList.remove("hidden-board");
-  }
+  hidePlayAgainButton(); 
 }
 
 // ===== MULTIPLAYER SETUP AND EVENTS =====
@@ -411,7 +393,7 @@ function initMultiplayer() {
     socket.emit("joinRoom", { name: playerName, roomId: action.toUpperCase() });
   }
 
-  showToss(); // show toss overlay while waiting
+  showToss(); 
 }
 
 function promptTossChoice() {
@@ -427,10 +409,10 @@ function promptTossChoice() {
 tossButtons.forEach(btn => {
   btn.addEventListener("click", () => {
     if (isMultiplayer && !btn.disabled && playerIndex !== null) {
-      const choice = btn.dataset.choice;  // Assume buttons have data-choice="head" or "tail"
+      const choice = btn.dataset.choice;
       console.log("Toss choice made:", choice);
       socket.emit("playerTossChoice", { roomId, player: playerIndex, choice });
-      tossButtons.forEach(b => b.disabled = true); // prevent double choices
+      tossButtons.forEach(b => b.disabled = true);
     }
   });
 });
@@ -453,12 +435,11 @@ function setupSocketEvents() {
 
   socket.on("bothPlayersReady", ({ player1Board, player2Board }) => {
     startGame({ player1Board, player2Board });
-    // Show both boards before toss result
     board1.parentElement.classList.remove("hidden-board");
     board2.parentElement.classList.remove("hidden-board");
 
     if (playerIndex === 1) {
-      promptTossChoice();  // Player 1 calls toss first (or change as needed)
+      promptTossChoice(); 
     }
   });
 
@@ -474,22 +455,14 @@ function setupSocketEvents() {
     }
   });
 
-  // MODIFIED: Enhanced toss result handler with popup message
   socket.on("tossResult", ({ serverChoice, playerChoice, startingPlayer, tossWinner }) => {
-    hideToss(); // Hide toss overlay immediately
-    
-    // Show popup message about toss winner
+    hideToss();
     const winnerMessage = tossWinner === playerIndex 
       ? `🎉 You won the toss! You start the game.` 
       : `Player ${tossWinner} won the toss and will start the game.`;
-    
     showPopupMessage(winnerMessage, 4000);
-    
-    // Update game state
     currentPlayer = startingPlayer;
     turnInfo.textContent = `Player ${startingPlayer}'s turn`;
-    
-    // Show only the appropriate board for the current player
     showOnlyYourBoard();
   });
 
@@ -500,7 +473,6 @@ function setupSocketEvents() {
   });
 
   socket.on("playerMove", ({ player, number }) => {
-    // Update local board if move by opponent
     if (player !== playerIndex) {
       const ownBoardEl = playerIndex === 1 ? board1 : board2;
       const cell = Array.from(ownBoardEl.querySelectorAll("div")).find(c => parseInt(c.textContent, 10) === number);
@@ -513,14 +485,10 @@ function setupSocketEvents() {
     const winnerMessage = winner === playerIndex 
       ? `🎉 Congratulations! You won the game!` 
       : `Player ${winner} won the game! Better luck next time!`;
-    
     showPopupMessage(winnerMessage, 5000);
     winnerInfo.textContent = `🎉 Player ${winner} wins the game!`;
     turnInfo.textContent = "Game Over - Click 'Play Again' to restart";
-    
-    // Show play again button
     showPlayAgainButton();
-    
     console.log(`Game ended: Player ${winner} won!`);
   });
 
@@ -529,27 +497,15 @@ function setupSocketEvents() {
   });
 
   socket.on("gameRestarted", ({ player1Board, player2Board, startingPlayer }) => {
-    // Reset game state
     gameOver = false;
     player1StruckLines.clear();
     player2StruckLines.clear();
     currentPlayer = startingPlayer;
-    
-    // Restart game with new boards
     startGame({ player1Board, player2Board });
-    
-    // Hide play again button
     hidePlayAgainButton();
-    
-    // Show popup about new game
     showPopupMessage("New game started! Good luck!", 3000);
-    
-    // Update turn info
     turnInfo.textContent = `Player ${startingPlayer} starts the new game.`;
-    
-    // Show appropriate board
     showOnlyYourBoard();
-    
     console.log("Game restarted!");
   });
 
@@ -574,29 +530,27 @@ vsComputerBtn.addEventListener("click", () => {
   isMultiplayer = false;
   hideModeSelection();
 
-  // Prompt player for name
   playerName = prompt("Enter your name:");
   if (!playerName || !playerName.trim()) {
-    playerName = "Player 1"; // default if empty
+    playerName = "Player 1";
   }
 
-  // Update player 1 board title with playerName
   document.querySelector("#player1-board h2").textContent = playerName;
-
-  // Set computer name as 'Jimmy' for player 2 board title
   document.querySelector("#player2-board h2").textContent = "Jimmy";
 
-  currentPlayer = 1; // Player 1 always starts vs computer
+  currentPlayer = 1;
   startGame();
   turnInfo.textContent = `Player ${currentPlayer}'s turn`;
-  board1.parentElement.classList.remove("hidden-board"); // Show user board
-  board2.parentElement.classList.add("hidden-board");    // Hide computer board
+  board1.parentElement.classList.remove("hidden-board");
+  board2.parentElement.classList.add("hidden-board");
 });
 
 multiplayerBtn.addEventListener("click", () => {
   vsComputer = false;
   isMultiplayer = true;
   hideModeSelection();
+  board1.parentElement.classList.remove("hidden-board");
+  board2.parentElement.classList.remove("hidden-board");
   initMultiplayer();
 });
 
@@ -630,14 +584,13 @@ playAgainButton.addEventListener("click", () => {
         startGame();
         currentPlayer = 1;
         turnInfo.textContent = `Player ${currentPlayer}'s turn`;
-        board1.parentElement.classList.remove("hidden-board"); // Show user board
-        board2.parentElement.classList.add("hidden-board");    // Hide computer board
+        board1.parentElement.classList.remove("hidden-board");
+        board2.parentElement.classList.add("hidden-board");
     }
 });
 
-// Show promo overlay on page load and hide mode selection
 document.addEventListener("DOMContentLoaded", () => {
   showPromoOverlay();
   modeSelectionOverlay.classList.add("hidden");
-  hidePlayAgainButton(); // Ensure the play again button is hidden on load
+  hidePlayAgainButton();
 });
