@@ -320,10 +320,14 @@ function updateTurn() {
 
     if (vsComputer) {
       if (currentPlayer === 1) {
+        // Show player 1's board (the human)
         board1.parentElement.classList.remove("hidden-board");
+        // Hide player 2's board (the computer)
         board2.parentElement.classList.add("hidden-board");
       } else {
+        // Show player 2's board (the computer)
         board1.parentElement.classList.add("hidden-board");
+        // Hide player 1's board (the human)
         board2.parentElement.classList.remove("hidden-board");
         setTimeout(computerTurn, 500);
       }
