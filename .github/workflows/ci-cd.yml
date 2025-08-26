@@ -1,4 +1,3 @@
-# .github/workflows/ci-cd.yml
 name: Bingo Game CI/CD Pipeline
 
 # Trigger on push to main branch and pull requests
