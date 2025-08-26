@@ -515,9 +515,12 @@ function initMultiplayer() {
     return;
   }
 
+  console.log("Initializing multiplayer with name:", playerName);
+
   if (!socket) {
     socket = io();
     setupSocketEvents();
+    console.log("Socket initialized");
   }
 
   let action;
@@ -532,9 +535,13 @@ function initMultiplayer() {
     break;
   }
 
+  console.log("Action:", action);
+
   if (action.toUpperCase() === "C") {
+    console.log("Creating room...");
     socket.emit("createRoom", { name: playerName });
   } else {
+    console.log("Joining room:", action.toUpperCase());
     socket.emit("joinRoom", { name: playerName, roomId: action.toUpperCase() });
   }
 
@@ -569,7 +576,14 @@ function setupSocketEvents() {
   socket.on("roomCreated", (data) => {
     roomId = data.roomId;
     playerIndex = 1;
+    console.log("Room created with ID:", roomId);
+    
+    // Use both alert and popup message for better visibility
     alert(`Room created! Your Room ID is: ${roomId}. Share this with your opponent to join.`);
+    showPopupMessage(`Room created! Room ID: ${roomId}`, 8000);
+    
+    // Also update the toss result to show room ID while waiting
+    tossResult.textContent = `Room created! Room ID: ${roomId}. Waiting for opponent to join...`;
   });
 
   socket.on("roomJoined", (data) => {
@@ -579,7 +593,11 @@ function setupSocketEvents() {
     if (data.opponentName) {
       opponentName = data.opponentName;
     }
+    console.log("Joined room:", roomId, "as player", playerIndex);
+    
+    // Use both alert and popup for better visibility
     alert(`Joined Room ${roomId} as ${playerName}`);
+    showPopupMessage(`Joined Room ${roomId} as ${playerName}`, 5000);
   });
 
   // NEW: Handle opponent info event
