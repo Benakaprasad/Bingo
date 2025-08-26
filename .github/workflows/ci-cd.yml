@@ -132,11 +132,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-    
+   # Setup Node.js
+- name: Setup Node.js ${{ env.NODE_VERSION }}
+  uses: actions/setup-node@v4
+  with:
+    node-version: ${{ env.NODE_VERSION }}
+    cache: 'npm'
+    cache-dependency-path: './package-lock.json'
+
     - name: Create package.json if missing
       run: |
         if [ ! -f package.json ]; then
