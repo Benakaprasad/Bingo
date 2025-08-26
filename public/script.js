@@ -315,12 +315,7 @@ function updateTurn() {
     turnInfo.textContent = `Player ${currentPlayer}'s turn`;
 
     if (vsComputer) {
-      if (currentPlayer === 1) {
-        board1.parentElement.classList.remove("hidden-board");
-        board2.parentElement.classList.add("hidden-board");
-      } else {
-        board1.parentElement.classList.add("hidden-board");
-        board2.parentElement.classList.remove("hidden-board");
+      if (currentPlayer === 2) {
         setTimeout(computerTurn, 500);
       }
     } else {
