@@ -38,22 +38,28 @@ let player1StruckLines = new Set();
 let player2StruckLines = new Set();
 let gameOver = false;
 
+// Player names for both modes
+let player1Name = "";  // For single player mode, this will be the user's name
+let player2Name = "Computer";  // Default for single player mode
+
 // Multiplayer-specific state
 let playerName = "";
-let opponentName = "";  // NEW: Store opponent's name
+let opponentName = "";  // Store opponent's name
 let playerIndex = null;  // 1 or 2 inside room (for identifying player)
 let roomId = null;
 
 // NEW: Helper function to get player name by index
 function getPlayerNameByIndex(index) {
   if (!isMultiplayer) {
-    return index === 1 ? "Player 1" : "Computer";
-  }
-  
-  if (index === playerIndex) {
-    return playerName;
+    // Single player vs computer mode
+    return index === 1 ? player1Name : "Computer";
   } else {
-    return opponentName || `Player ${index}`;
+    // Multiplayer mode
+    if (index === playerIndex) {
+      return playerName;
+    } else {
+      return opponentName || `Player ${index}`;
+    }
   }
 }
 
@@ -156,6 +162,78 @@ function showPopupMessage(message, duration = 3000) {
       }
     }, 300);
   }, duration);
+}
+
+// ===== PLAY AGAIN BUTTON FUNCTIONS =====
+function showPlayAgainButton() {
+  // Check if button already exists
+  if (document.getElementById('play-again-btn')) return;
+  
+  const playAgainBtn = document.createElement('button');
+  playAgainBtn.id = 'play-again-btn';
+  playAgainBtn.textContent = 'Play Again';
+  playAgainBtn.style.cssText = `
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 1000;
+    transition: transform 0.2s ease;
+  `;
+  
+  playAgainBtn.addEventListener('mouseenter', () => {
+    playAgainBtn.style.transform = 'translateX(-50%) scale(1.05)';
+  });
+  
+  playAgainBtn.addEventListener('mouseleave', () => {
+    playAgainBtn.style.transform = 'translateX(-50%) scale(1)';
+  });
+  
+  playAgainBtn.addEventListener('click', () => {
+    if (isMultiplayer && socket && roomId) {
+      // For multiplayer, emit restart request
+      socket.emit("requestRestart", { roomId });
+    } else {
+      // For single player, restart immediately
+      restartSinglePlayerGame();
+    }
+  });
+  
+  document.body.appendChild(playAgainBtn);
+}
+
+function hidePlayAgainButton() {
+  const playAgainBtn = document.getElementById('play-again-btn');
+  if (playAgainBtn) {
+    playAgainBtn.remove();
+  }
+}
+
+function restartSinglePlayerGame() {
+  // Reset game state
+  gameOver = false;
+  player1StruckLines.clear();
+  player2StruckLines.clear();
+  currentPlayer = 1;
+  
+  // Hide play again button
+  hidePlayAgainButton();
+  
+  // Start new game
+  startGame();
+  turnInfo.textContent = `${player1Name}'s turn`;
+  
+  // Show popup
+  showPopupMessage("New game started! Good luck!", 3000);
 }
 
 // ===== VS COMPUTER HELPERS =====
@@ -322,9 +400,14 @@ function checkForBingo(player) {
     }
     
     // Show popup message for winner
-    const winnerMessage = player === playerIndex 
-      ? `🎉 Congratulations! You won the game!` 
-      : `${winnerName} won the game! Better luck next time!`;
+    const winnerMessage = isMultiplayer 
+      ? (player === playerIndex 
+          ? `🎉 Congratulations! You won the game!` 
+          : `${winnerName} won the game! Better luck next time!`)
+      : (player === 1 
+          ? `🎉 Congratulations ${player1Name}! You won the game!` 
+          : `Computer won the game! Better luck next time!`);
+    
     showPopupMessage(winnerMessage, 5000);
   }
 }
@@ -395,6 +478,26 @@ function startGame(multiplayerBoards) {
     board1.parentElement.classList.remove("hidden-board");
     board2.parentElement.classList.remove("hidden-board");
   }
+}
+
+// ===== SINGLE PLAYER NAME INPUT FUNCTION =====
+function getSinglePlayerName() {
+  let name;
+  while (true) {
+    name = prompt("Enter your name:");
+    if (name === null) {
+      // User cancelled, return false to indicate cancellation
+      return false;
+    }
+    name = name.trim();
+    if (name.length === 0) {
+      alert("Name cannot be empty. Please enter your name.");
+      continue;
+    }
+    break;
+  }
+  player1Name = name;
+  return true;
 }
 
 // ===== MULTIPLAYER SETUP AND EVENTS =====
@@ -610,12 +713,18 @@ promoStartBtn.addEventListener("click", () => {
 });
 
 vsComputerBtn.addEventListener("click", () => {
+  // Ask for player name first
+  if (!getSinglePlayerName()) {
+    // User cancelled name input, don't start game
+    return;
+  }
+  
   vsComputer = true;
   isMultiplayer = false;
   hideModeSelection();
   currentPlayer = 1; // Player 1 always starts vs computer
   startGame();
-  turnInfo.textContent = `Player 1's turn`;
+  turnInfo.textContent = `${player1Name}'s turn`;
   board1.parentElement.classList.remove("hidden-board"); // Show user board
   board2.parentElement.classList.add("hidden-board");    // Hide computer board
 });
@@ -629,6 +738,7 @@ multiplayerBtn.addEventListener("click", () => {
 
 resetButton.addEventListener("click", () => {
   hideToss();
+  hidePlayAgainButton(); // Hide play again button when resetting
   showPromoOverlay();
   winnerInfo.textContent = "";
   turnInfo.textContent = "";
@@ -644,6 +754,8 @@ resetButton.addEventListener("click", () => {
   document.querySelectorAll('.player-name-header').forEach(header => header.remove());
   
   // Reset player names
+  player1Name = "";
+  player2Name = "Computer";
   playerName = "";
   opponentName = "";
 
