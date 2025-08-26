@@ -336,6 +336,7 @@ function showOnlyYourBoard() {
 }
 
 // ===== START GAME =====
+// ===== START GAME =====
 function startGame(multiplayerBoards) {
   if (multiplayerBoards && multiplayerBoards.player1Board && multiplayerBoards.player2Board) {
     player1Board = multiplayerBoards.player1Board;
@@ -345,9 +346,11 @@ function startGame(multiplayerBoards) {
     player2Board = generateBoard();
   }
 
+  // Creates the board cells and adds event listeners
   createBoard(board1, player1Board, 1);
   createBoard(board2, player2Board, 2);
   
+  // Reset game state
   player1StruckLines.clear();
   player2StruckLines.clear();
   winnerInfo.textContent = "";
@@ -356,6 +359,7 @@ function startGame(multiplayerBoards) {
   gameOver = false;
   hidePlayAgainButton(); 
 }
+
 
 // ===== MULTIPLAYER SETUP AND EVENTS =====
 function initMultiplayer() {
@@ -520,6 +524,7 @@ promoStartBtn.addEventListener("click", () => {
   showModeSelection();
 });
 
+// ===== EVENT LISTENERS =====
 vsComputerBtn.addEventListener("click", () => {
   vsComputer = true;
   isMultiplayer = false;
@@ -534,12 +539,15 @@ vsComputerBtn.addEventListener("click", () => {
   document.querySelector("#player2-board h2").textContent = "Jimmy";
 
   currentPlayer = 1;
+  // Step 1: Start the game (creates the boards)
   startGame();
-  turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+  
+  // Step 2: Now that the boards are created, make them visible
   board1.parentElement.classList.remove("hidden-board");
   board2.parentElement.classList.add("hidden-board");
+  
+  turnInfo.textContent = `Player ${currentPlayer}'s turn`;
 });
-
 multiplayerBtn.addEventListener("click", () => {
   vsComputer = false;
   isMultiplayer = true;
