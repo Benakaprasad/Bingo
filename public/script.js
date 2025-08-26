@@ -220,12 +220,10 @@ function strikeNumber(cell, number, player, isRemote = false) {
 
   cell.classList.add("strike");
 
-  // Multiplayer: emit move to server only if local move and game not over
   if (!isRemote && isMultiplayer && socket && !gameOver) {
     socket.emit("chooseNumber", { roomId, player, number });
   }
 
-  // Strike same number on opponent's board
   let opponentBoardEl = player === 1 ? board2 : board1;
   Array.from(opponentBoardEl.querySelectorAll("div")).forEach(c => {
     if (parseInt(c.textContent, 10) === number && !c.classList.contains("strike")) {
@@ -233,7 +231,6 @@ function strikeNumber(cell, number, player, isRemote = false) {
     }
   });
 
-  // Use display name for player in message
   const displayName = getPlayerDisplayName(player);
   currentNumberDisplay.textContent = `${displayName} chose number ${number}`;
 
@@ -244,6 +241,7 @@ function strikeNumber(cell, number, player, isRemote = false) {
     updateTurn();
   }
 }
+
 // ===== CHECK FOR BINGO =====
 function checkForBingo(player) {
   const boardEl = player === 1 ? board1 : board2;
