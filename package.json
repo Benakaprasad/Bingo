@@ -1,0 +1,22 @@
+{
+  "name": "bingo",
+  "version": "1.0.0",
+  "description": "🎉 Bingo Game\r Welcome to the ultimate Bingo Game experience! This game combines a sleek, modern design with thrilling gameplay modes that will keep you entertained whether you're battling the computer or playing with friends.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Benakaprasad/Bingo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Benakaprasad/Bingo/issues"
+  },
+  "homepage": "https://github.com/Benakaprasad/Bingo#readme"
+}
