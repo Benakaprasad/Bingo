@@ -37,8 +37,19 @@ function coinToss() {
   return Math.random() < 0.5 ? 1 : 2;
 }
 
+// NEW: Helper function to get player by index
+function getPlayerByIndex(room, playerIndex) {
+  return room.players.find(p => p.playerIndex === playerIndex);
+}
+
+// NEW: Helper function to get opponent info
+function getOpponentInfo(room, currentPlayerId) {
+  return room.players.find(p => p.id !== currentPlayerId);
+}
+
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
+  
   // Create a room
   socket.on("createRoom", ({ name }) => {
     let roomId;
@@ -56,7 +67,7 @@ io.on("connection", (socket) => {
       restartRequests: new Set(),
     };
 
-    rooms[roomId].players.push({ id: socket.id, name, playerIndex: 1 });
+    rooms[roomId].players.push({ id: socket.id, name: name.trim(), playerIndex: 1 });
     rooms[roomId].boards[socket.id] = generateBoard();
 
     socket.join(roomId);
@@ -64,7 +75,7 @@ io.on("connection", (socket) => {
     console.log(`Room ${roomId} created by ${name} (${socket.id})`);
   });
   
-  // Join existing room
+  // MODIFIED: Enhanced joinRoom with opponent name sharing
   socket.on("joinRoom", ({ name, roomId }) => {
     const room = rooms[roomId];
     if (!room) {
@@ -79,16 +90,25 @@ io.on("connection", (socket) => {
     // Assign playerIndex based on current room players count
     const playerIndex = room.players.length === 0 ? 1 : 2;
 
-    room.players.push({ id: socket.id, name, playerIndex });
+    // Get opponent info before adding new player
+    const opponentPlayer = room.players.length > 0 ? room.players[0] : null;
+
+    room.players.push({ id: socket.id, name: name.trim(), playerIndex });
     room.boards[socket.id] = generateBoard();
 
     socket.join(roomId);
-    socket.emit("roomJoined", { roomId, playerIndex });
+    
+    // Send room joined confirmation with opponent name if available
+    socket.emit("roomJoined", { 
+      roomId, 
+      playerIndex,
+      opponentName: opponentPlayer ? opponentPlayer.name : null
+    });
 
-    // Notify the other player if any joined
-    const otherPlayer = room.players.find(p => p.id !== socket.id);
-    if (otherPlayer) {
-      io.to(otherPlayer.id).emit("playerJoined", { name, roomId });
+    // Send opponent info to the existing player
+    if (opponentPlayer) {
+      io.to(opponentPlayer.id).emit("opponentInfo", { opponentName: name.trim() });
+      io.to(opponentPlayer.id).emit("playerJoined", { name: name.trim(), roomId });
     }
 
     console.log(`${name} (${socket.id}) joined room ${roomId} as Player ${playerIndex}`);
@@ -97,13 +117,18 @@ io.on("connection", (socket) => {
     if (room.players.length === 2) {
       // Randomly select who calls toss
       const callerIndex = Math.random() < 0.5 ? 1 : 2;
-      io.to(roomId).emit("chooseTossCaller", { caller: callerIndex });
-
-      // You can defer actual startGame until after toss is decided
+      const callerPlayer = getPlayerByIndex(room, callerIndex);
+      
+      console.log(`${callerPlayer.name} (Player ${callerIndex}) chosen to call toss in room ${roomId}`);
+      
+      io.to(roomId).emit("chooseTossCaller", { 
+        caller: callerIndex,
+        callerName: callerPlayer.name 
+      });
     }
   });
 
-  // MODIFIED: Enhanced playerTossChoice handler
+  // MODIFIED: Enhanced playerTossChoice handler with names
   socket.on("playerTossChoice", ({ roomId, player, choice }) => {
     const room = rooms[roomId];
     if (!room || room.gameStarted) return;
@@ -111,6 +136,10 @@ io.on("connection", (socket) => {
     const serverChoice = Math.random() < 0.5 ? "head" : "tails";
     const tossWinner = (choice === serverChoice) ? player : (player === 1 ? 2 : 1);
     const startingPlayer = tossWinner;
+
+    // Get player names
+    const tossWinnerPlayer = getPlayerByIndex(room, tossWinner);
+    const callingPlayer = getPlayerByIndex(room, player);
 
     room.gameStarted = true;
     room.currentTurn = startingPlayer;
@@ -122,26 +151,31 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("bothPlayersReady", {
       player1Board: room.boards[player1Socket.id],
       player2Board: room.boards[player2Socket.id],
-      startingPlayer: room.currentTurn
+      startingPlayer: room.currentTurn,
+      player1Name: player1Socket.name,
+      player2Name: player2Socket.name
     });
 
-    // Emit enhanced toss result with clear winner info
+    // Emit enhanced toss result with clear winner info and names
     io.to(roomId).emit("tossResult", { 
       serverChoice,        // "head"/"tails"
       playerChoice: choice,
       startingPlayer,      // 1 or 2
-      tossWinner          // 1 or 2
+      tossWinner,          // 1 or 2
+      tossWinnerName: tossWinnerPlayer.name,
+      callingPlayerName: callingPlayer.name
     });
 
-    console.log(`Coin toss: server chose ${serverChoice}, player ${player} chose ${choice}. Player ${tossWinner} wins and starts.`);
+    console.log(`Coin toss in room ${roomId}: server chose ${serverChoice}, ${callingPlayer.name} chose ${choice}. ${tossWinnerPlayer.name} wins and starts.`);
   });
 
-  // Player chooses a number
+  // MODIFIED: Enhanced chooseNumber handler with player names
   socket.on("chooseNumber", ({ roomId, player, number }) => {
     const room = rooms[roomId];
     if (!room || !room.gameStarted || room.gameEnded) return;
 
-    if (socket.id !== room.players[player - 1].id) {
+    const currentPlayer = getPlayerByIndex(room, player);
+    if (!currentPlayer || socket.id !== currentPlayer.id) {
       socket.emit("errorMessage", "Not your turn.");
       return;
     }
@@ -150,17 +184,28 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Broadcast chosen number to both players
-    io.to(roomId).emit("playerMove", { player, number });
+    // Broadcast chosen number to both players with player name
+    io.to(roomId).emit("playerMove", { 
+      player, 
+      number,
+      playerName: currentPlayer.name
+    });
+
+    console.log(`${currentPlayer.name} chose number ${number} in room ${roomId}`);
 
     // Change turn and notify only if game hasn't ended
     if (!room.gameEnded) {
       room.currentTurn = player === 1 ? 2 : 1;
-      io.to(roomId).emit("turnChanged", { currentPlayer: room.currentTurn });
+      const nextPlayer = getPlayerByIndex(room, room.currentTurn);
+      
+      io.to(roomId).emit("turnChanged", { 
+        currentPlayer: room.currentTurn,
+        currentPlayerName: nextPlayer.name
+      });
     }
   });
 
-  // Handle player winning
+  // MODIFIED: Enhanced playerWon handler with player names
   socket.on("playerWon", ({ roomId, winner }) => {
     const room = rooms[roomId];
     if (!room || !room.gameStarted || room.gameEnded) return;
@@ -169,18 +214,26 @@ io.on("connection", (socket) => {
     room.gameEnded = true;
     room.winner = winner;
 
-    // Broadcast winner to both players
-    io.to(roomId).emit("gameWinner", { winner });
+    const winnerPlayer = getPlayerByIndex(room, winner);
 
-    console.log(`Game in room ${roomId} ended. Player ${winner} won!`);
+    // Broadcast winner to both players with name
+    io.to(roomId).emit("gameWinner", { 
+      winner,
+      winnerName: winnerPlayer.name
+    });
+
+    console.log(`Game in room ${roomId} ended. ${winnerPlayer.name} (Player ${winner}) won!`);
   });
 
-  // Handle restart request
+  // MODIFIED: Enhanced restart request with player names
   socket.on("requestRestart", ({ roomId }) => {
     const room = rooms[roomId];
     if (!room || !room.gameEnded) return;
 
-    const playerIndex = room.players.findIndex(p => p.id === socket.id) + 1;
+    const currentPlayer = room.players.find(p => p.id === socket.id);
+    if (!currentPlayer) return;
+
+    const playerIndex = currentPlayer.playerIndex;
     
     // Mark this player as ready for restart
     if (!room.restartRequests) {
@@ -188,7 +241,7 @@ io.on("connection", (socket) => {
     }
     room.restartRequests.add(playerIndex);
 
-    console.log(`Player ${playerIndex} requested restart in room ${roomId}`);
+    console.log(`${currentPlayer.name} (Player ${playerIndex}) requested restart in room ${roomId}`);
 
     // Check if both players want to restart
     if (room.restartRequests.size === 2) {
@@ -208,34 +261,49 @@ io.on("connection", (socket) => {
 
       // Randomly decide starting player
       const startingPlayer = Math.random() < 0.5 ? 1 : 2;
+      const startingPlayerObj = getPlayerByIndex(room, startingPlayer);
+      
       room.currentTurn = startingPlayer;
       room.gameStarted = true;
 
-      // Send new game data to both players
+      // Send new game data to both players with names
       io.to(roomId).emit("gameRestarted", {
         player1Board: room.boards[player1Socket.id],
         player2Board: room.boards[player2Socket.id],
-        startingPlayer
+        startingPlayer,
+        startingPlayerName: startingPlayerObj.name,
+        player1Name: player1Socket.name,
+        player2Name: player2Socket.name
       });
 
-      console.log(`Game restarted in room ${roomId}, Player ${startingPlayer} starts`);
+      console.log(`Game restarted in room ${roomId}, ${startingPlayerObj.name} (Player ${startingPlayer}) starts`);
     } else {
       // Notify the requesting player that we're waiting for the other player
-      socket.emit("waitingForRestart");
+      const otherPlayer = room.players.find(p => p.id !== socket.id);
+      socket.emit("waitingForRestart", {
+        waitingFor: otherPlayer ? otherPlayer.name : "other player"
+      });
     }
   });
 
-  // Disconnect handling
+  // MODIFIED: Enhanced disconnect handling with player names
   socket.on("disconnect", () => {
     console.log(`Socket disconnected: ${socket.id}`);
     for (const [roomId, room] of Object.entries(rooms)) {
-      const idx = room.players.findIndex((p) => p.id === socket.id);
-      if (idx !== -1) {
-        room.players.splice(idx, 1);
+      const playerIndex = room.players.findIndex((p) => p.id === socket.id);
+      if (playerIndex !== -1) {
+        const disconnectedPlayer = room.players[playerIndex];
+        console.log(`${disconnectedPlayer.name} left room ${roomId}`);
+        
+        room.players.splice(playerIndex, 1);
         delete room.boards[socket.id];
         room.gameStarted = false;
 
-        io.to(roomId).emit("playerLeft");
+        // Notify remaining players with the name of who left
+        io.to(roomId).emit("playerLeft", { 
+          playerName: disconnectedPlayer.name 
+        });
+        
         if (room.players.length === 0) {
           delete rooms[roomId];
           console.log(`Room ${roomId} deleted`);
@@ -246,7 +314,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// Internal function: start game and decide toss
+// MODIFIED: Enhanced internal startGame function with names
 function startGame(roomId) {
   const room = rooms[roomId];
   if (!room) return;
@@ -254,6 +322,7 @@ function startGame(roomId) {
   room.gameStarted = true;
   // Toss logic to randomly select starting player
   room.currentTurn = Math.random() < 0.5 ? 1 : 2;
+  const startingPlayer = getPlayerByIndex(room, room.currentTurn);
 
   // Send boards and starting player to each player individually
   const player1Socket = room.players.find(p => p.playerIndex === 1);
@@ -263,14 +332,20 @@ function startGame(roomId) {
     io.to(player.id).emit("bothPlayersReady", {
       player1Board: room.boards[player1Socket.id],
       player2Board: room.boards[player2Socket.id],
-      startingPlayer: room.currentTurn
+      startingPlayer: room.currentTurn,
+      startingPlayerName: startingPlayer.name,
+      player1Name: player1Socket.name,
+      player2Name: player2Socket.name
     });
   });
 
-  // Emit toss result event to all players in the room
-  io.to(roomId).emit("tossResult", room.currentTurn);
+  // Emit toss result event to all players in the room with names
+  io.to(roomId).emit("tossResult", {
+    startingPlayer: room.currentTurn,
+    startingPlayerName: startingPlayer.name
+  });
 
-  console.log(`Game started in room ${roomId}, player ${room.currentTurn} starts.`);
+  console.log(`Game started in room ${roomId}, ${startingPlayer.name} (player ${room.currentTurn}) starts.`);
 }
 
 app.use(express.static("public"));

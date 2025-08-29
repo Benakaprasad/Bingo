@@ -38,10 +38,35 @@ let player1StruckLines = new Set();
 let player2StruckLines = new Set();
 let gameOver = false;
 
+// Player names for both modes
+let player1Name = "";  // For single player mode, this will be the user's name
+let player2Name = "Computer";  // Default for single player mode
+
 // Multiplayer-specific state
 let playerName = "";
+let opponentName = "";  // Store opponent's name
 let playerIndex = null;  // 1 or 2 inside room (for identifying player)
 let roomId = null;
+
+// NEW: Helper function to get player name by index
+function getPlayerNameByIndex(index) {
+  if (!isMultiplayer) {
+    // Single player vs computer mode
+    return index === 1 ? player1Name : "Computer";
+  } else {
+    // Multiplayer mode
+    if (index === playerIndex) {
+      return playerName;
+    } else {
+      return opponentName || `Player ${index}`;
+    }
+  }
+}
+
+// NEW: Helper function to get current player's name
+function getCurrentPlayerName() {
+  return getPlayerNameByIndex(currentPlayer);
+}
 
 // ===== OVERLAY CONTROLS =====
 function showPromoOverlay() {
@@ -139,6 +164,78 @@ function showPopupMessage(message, duration = 3000) {
   }, duration);
 }
 
+// ===== PLAY AGAIN BUTTON FUNCTIONS =====
+function showPlayAgainButton() {
+  // Check if button already exists
+  if (document.getElementById('play-again-btn')) return;
+  
+  const playAgainBtn = document.createElement('button');
+  playAgainBtn.id = 'play-again-btn';
+  playAgainBtn.textContent = 'Play Again';
+  playAgainBtn.style.cssText = `
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 1000;
+    transition: transform 0.2s ease;
+  `;
+  
+  playAgainBtn.addEventListener('mouseenter', () => {
+    playAgainBtn.style.transform = 'translateX(-50%) scale(1.05)';
+  });
+  
+  playAgainBtn.addEventListener('mouseleave', () => {
+    playAgainBtn.style.transform = 'translateX(-50%) scale(1)';
+  });
+  
+  playAgainBtn.addEventListener('click', () => {
+    if (isMultiplayer && socket && roomId) {
+      // For multiplayer, emit restart request
+      socket.emit("requestRestart", { roomId });
+    } else {
+      // For single player, restart immediately
+      restartSinglePlayerGame();
+    }
+  });
+  
+  document.body.appendChild(playAgainBtn);
+}
+
+function hidePlayAgainButton() {
+  const playAgainBtn = document.getElementById('play-again-btn');
+  if (playAgainBtn) {
+    playAgainBtn.remove();
+  }
+}
+
+function restartSinglePlayerGame() {
+  // Reset game state
+  gameOver = false;
+  player1StruckLines.clear();
+  player2StruckLines.clear();
+  currentPlayer = 1;
+  
+  // Hide play again button
+  hidePlayAgainButton();
+  
+  // Start new game
+  startGame();
+  turnInfo.textContent = `${player1Name}'s turn`;
+  
+  // Show popup
+  showPopupMessage("New game started! Good luck!", 3000);
+}
+
 // ===== VS COMPUTER HELPERS =====
 function getUnstruckNumbers(boardEl) {
   return Array.from(boardEl.querySelectorAll("div"))
@@ -210,6 +307,22 @@ function generateBoard() {
 // ===== CREATE BOARD =====
 function createBoard(boardElement, boardArray, player) {
   boardElement.innerHTML = "";
+  
+  // NEW: Add player name header above the board
+  const playerNameHeader = document.createElement("h3");
+  playerNameHeader.style.cssText = `
+    text-align: center;
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: bold;
+  `;
+  playerNameHeader.textContent = getPlayerNameByIndex(player);
+  playerNameHeader.className = "player-name-header";
+  
+  // Insert header before the board
+  boardElement.parentElement.insertBefore(playerNameHeader, boardElement);
+  
   for (let i = 0; i < 25; i++) {
     let cell = document.createElement("div");
     cell.textContent = boardArray[i];
@@ -241,7 +354,9 @@ function strikeNumber(cell, number, player, isRemote = false) {
     }
   });
 
-  currentNumberDisplay.textContent = `Player ${player} chose number ${number}`;
+  // MODIFIED: Display player name instead of "Player X"
+  const playerName = getPlayerNameByIndex(player);
+  currentNumberDisplay.textContent = `${playerName} chose number ${number}`;
 
   checkForBingo(player);
   checkForBingo(player === 1 ? 2 : 1);
@@ -271,7 +386,9 @@ function checkForBingo(player) {
     }
   }
   if (struckLinesSet.size >= 5 && !gameOver) {
-    winnerInfo.textContent = `🎉 Player ${player} wins with ${struckLinesSet.size} lines!`;
+    // MODIFIED: Display winner name instead of "Player X"
+    const winnerName = getPlayerNameByIndex(player);
+    winnerInfo.textContent = `🎉 ${winnerName} wins with ${struckLinesSet.size} lines!`;
     gameOver = true;
     
     // Emit winner to server in multiplayer mode
@@ -283,9 +400,14 @@ function checkForBingo(player) {
     }
     
     // Show popup message for winner
-    const winnerMessage = player === playerIndex 
-      ? `🎉 Congratulations! You won the game!` 
-      : `Player ${player} won the game! Better luck next time!`;
+    const winnerMessage = isMultiplayer 
+      ? (player === playerIndex 
+          ? `🎉 Congratulations! You won the game!` 
+          : `${winnerName} won the game! Better luck next time!`)
+      : (player === 1 
+          ? `🎉 Congratulations ${player1Name}! You won the game!` 
+          : `Computer won the game! Better luck next time!`);
+    
     showPopupMessage(winnerMessage, 5000);
   }
 }
@@ -294,7 +416,9 @@ function checkForBingo(player) {
 function updateTurn() {
   if (!gameOver) {
     currentPlayer = currentPlayer === 1 ? 2 : 1;
-    turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+    // MODIFIED: Display current player name instead of "Player X"
+    const currentPlayerName = getCurrentPlayerName();
+    turnInfo.textContent = `${currentPlayerName}'s turn`;
 
     if (vsComputer) {
       if (currentPlayer === 1) {
@@ -326,6 +450,9 @@ function showOnlyYourBoard() {
 
 // ===== START GAME =====
 function startGame(multiplayerBoards) {
+  // Clear any existing player name headers
+  document.querySelectorAll('.player-name-header').forEach(header => header.remove());
+  
   if (multiplayerBoards && multiplayerBoards.player1Board && multiplayerBoards.player2Board) {
     player1Board = multiplayerBoards.player1Board;
     player2Board = multiplayerBoards.player2Board;
@@ -353,6 +480,26 @@ function startGame(multiplayerBoards) {
   }
 }
 
+// ===== SINGLE PLAYER NAME INPUT FUNCTION =====
+function getSinglePlayerName() {
+  let name;
+  while (true) {
+    name = prompt("Enter your name:");
+    if (name === null) {
+      // User cancelled, return false to indicate cancellation
+      return false;
+    }
+    name = name.trim();
+    if (name.length === 0) {
+      alert("Name cannot be empty. Please enter your name.");
+      continue;
+    }
+    break;
+  }
+  player1Name = name;
+  return true;
+}
+
 // ===== MULTIPLAYER SETUP AND EVENTS =====
 function initMultiplayer() {
   playerName = prompt("Enter your name:");
@@ -361,9 +508,19 @@ function initMultiplayer() {
     return;
   }
 
+  // Trim and validate player name
+  playerName = playerName.trim();
+  if (playerName.length === 0) {
+    alert("Name cannot be empty.");
+    return;
+  }
+
+  console.log("Initializing multiplayer with name:", playerName);
+
   if (!socket) {
     socket = io();
     setupSocketEvents();
+    console.log("Socket initialized");
   }
 
   let action;
@@ -378,9 +535,13 @@ function initMultiplayer() {
     break;
   }
 
+  console.log("Action:", action);
+
   if (action.toUpperCase() === "C") {
+    console.log("Creating room...");
     socket.emit("createRoom", { name: playerName });
   } else {
+    console.log("Joining room:", action.toUpperCase());
     socket.emit("joinRoom", { name: playerName, roomId: action.toUpperCase() });
   }
 
@@ -415,13 +576,34 @@ function setupSocketEvents() {
   socket.on("roomCreated", (data) => {
     roomId = data.roomId;
     playerIndex = 1;
+    console.log("Room created with ID:", roomId);
+    
+    // Use both alert and popup message for better visibility
     alert(`Room created! Your Room ID is: ${roomId}. Share this with your opponent to join.`);
+    showPopupMessage(`Room created! Room ID: ${roomId}`, 8000);
+    
+    // Also update the toss result to show room ID while waiting
+    tossResult.textContent = `Room created! Room ID: ${roomId}. Waiting for opponent to join...`;
   });
 
   socket.on("roomJoined", (data) => {
     roomId = data.roomId;
     playerIndex = data.playerIndex;
-    alert(`Joined Room ${roomId} as Player ${playerIndex}`);
+    // NEW: Store opponent's name when received from server
+    if (data.opponentName) {
+      opponentName = data.opponentName;
+    }
+    console.log("Joined room:", roomId, "as player", playerIndex);
+    
+    // Use both alert and popup for better visibility
+    alert(`Joined Room ${roomId} as ${playerName}`);
+    showPopupMessage(`Joined Room ${roomId} as ${playerName}`, 5000);
+  });
+
+  // NEW: Handle opponent info event
+  socket.on("opponentInfo", (data) => {
+    opponentName = data.opponentName;
+    console.log("Opponent name set:", opponentName);
   });
 
   socket.on("bothPlayersReady", ({ player1Board, player2Board }) => {
@@ -436,31 +618,34 @@ function setupSocketEvents() {
   });
 
   socket.on("chooseTossCaller", ({ caller }) => {
+    const callerName = getPlayerNameByIndex(caller);
     if (caller === playerIndex) {
       tossResult.textContent = "You are chosen to call Heads or Tails.";
       tossButtons.forEach(b => b.disabled = false);
       tossOverlay.classList.remove("hidden");
     } else {
-      tossResult.textContent = `Player ${caller} will call Heads or Tails. Please wait...`;
+      tossResult.textContent = `${callerName} will call Heads or Tails. Please wait...`;
       tossButtons.forEach(b => b.disabled = true);
       tossOverlay.classList.remove("hidden");
     }
   });
 
-  // MODIFIED: Enhanced toss result handler with popup message
+  // MODIFIED: Enhanced toss result handler with player names
   socket.on("tossResult", ({ serverChoice, playerChoice, startingPlayer, tossWinner }) => {
     hideToss(); // Hide toss overlay immediately
     
-    // Show popup message about toss winner
+    // Show popup message about toss winner with name
+    const winnerName = getPlayerNameByIndex(tossWinner);
     const winnerMessage = tossWinner === playerIndex 
       ? `🎉 You won the toss! You start the game.` 
-      : `Player ${tossWinner} won the toss and will start the game.`;
+      : `${winnerName} won the toss and will start the game.`;
     
     showPopupMessage(winnerMessage, 4000);
     
     // Update game state
     currentPlayer = startingPlayer;
-    turnInfo.textContent = `Player ${startingPlayer} starts the game.`;
+    const startingPlayerName = getPlayerNameByIndex(startingPlayer);
+    turnInfo.textContent = `${startingPlayerName} starts the game.`;
     
     // Show only the appropriate board for the current player
     showOnlyYourBoard();
@@ -468,7 +653,8 @@ function setupSocketEvents() {
 
   socket.on("turnChanged", ({ currentPlayer: newTurn }) => {
     currentPlayer = newTurn;
-    turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+    const currentPlayerName = getCurrentPlayerName();
+    turnInfo.textContent = `${currentPlayerName}'s turn`;
     showOnlyYourBoard();
   });
 
@@ -483,18 +669,19 @@ function setupSocketEvents() {
 
   socket.on("gameWinner", ({ winner }) => {
     gameOver = true;
+    const winnerName = getPlayerNameByIndex(winner);
     const winnerMessage = winner === playerIndex 
       ? `🎉 Congratulations! You won the game!` 
-      : `Player ${winner} won the game! Better luck next time!`;
+      : `${winnerName} won the game! Better luck next time!`;
     
     showPopupMessage(winnerMessage, 5000);
-    winnerInfo.textContent = `🎉 Player ${winner} wins the game!`;
+    winnerInfo.textContent = `🎉 ${winnerName} wins the game!`;
     turnInfo.textContent = "Game Over - Click 'Play Again' to restart";
     
     // Show play again button
     showPlayAgainButton();
     
-    console.log(`Game ended: Player ${winner} won!`);
+    console.log(`Game ended: ${winnerName} won!`);
   });
 
   socket.on("waitingForRestart", () => {
@@ -517,8 +704,9 @@ function setupSocketEvents() {
     // Show popup about new game
     showPopupMessage("New game started! Good luck!", 3000);
     
-    // Update turn info
-    turnInfo.textContent = `Player ${startingPlayer} starts the new game.`;
+    // Update turn info with player name
+    const startingPlayerName = getPlayerNameByIndex(startingPlayer);
+    turnInfo.textContent = `${startingPlayerName} starts the new game.`;
     
     // Show appropriate board
     showOnlyYourBoard();
@@ -543,12 +731,18 @@ promoStartBtn.addEventListener("click", () => {
 });
 
 vsComputerBtn.addEventListener("click", () => {
+  // Ask for player name first
+  if (!getSinglePlayerName()) {
+    // User cancelled name input, don't start game
+    return;
+  }
+  
   vsComputer = true;
   isMultiplayer = false;
   hideModeSelection();
   currentPlayer = 1; // Player 1 always starts vs computer
   startGame();
-  turnInfo.textContent = `Player ${currentPlayer}'s turn`;
+  turnInfo.textContent = `${player1Name}'s turn`;
   board1.parentElement.classList.remove("hidden-board"); // Show user board
   board2.parentElement.classList.add("hidden-board");    // Hide computer board
 });
@@ -562,6 +756,7 @@ multiplayerBtn.addEventListener("click", () => {
 
 resetButton.addEventListener("click", () => {
   hideToss();
+  hidePlayAgainButton(); // Hide play again button when resetting
   showPromoOverlay();
   winnerInfo.textContent = "";
   turnInfo.textContent = "";
@@ -572,6 +767,15 @@ resetButton.addEventListener("click", () => {
   player2StruckLines.clear();
   board1.parentElement.classList.add("hidden-board");
   board2.parentElement.classList.add("hidden-board");
+  
+  // Clear player name headers
+  document.querySelectorAll('.player-name-header').forEach(header => header.remove());
+  
+  // Reset player names
+  player1Name = "";
+  player2Name = "Computer";
+  playerName = "";
+  opponentName = "";
 
   if (socket) {
     socket.disconnect();
