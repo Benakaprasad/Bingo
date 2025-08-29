@@ -1,20 +1,25 @@
 {
-  "name": "bingo-game",
+  "name": "bingo",
   "version": "1.0.0",
-  "description": "Interactive real-time multiplayer Bingo game",
+  "description": "🎉 Bingo Game\r Welcome to the ultimate Bingo Game experience!
+ This game combines a sleek, modern design with thrilling gameplay modes that wi
+ll keep you entertained whether you're battling the computer or playing with fri
+ends.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
   },
-  "dependencies": {
-    "express": "^4.18.0",
-    "socket.io": "^4.7.0"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Benakaprasad/Bingo.git"
   },
-  "engines": {
-    "node": ">=14.0.0"
-  },
+  "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Benakaprasad/Bingo/issues"
+  },
+  "homepage": "https://github.com/Benakaprasad/Bingo#readme"
 }
