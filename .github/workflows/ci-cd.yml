@@ -1,258 +1,155 @@
 name: Bingo Game CI/CD Pipeline
 
-# Trigger on push to main branch and pull requests
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
 
-# Environment variables
 env:
   NODE_VERSION: '18'
   APP_NAME: bingo-game
 
 jobs:
-  # Job 1: Test and Build
-  build-and-test:
-    name: Build and Test Bingo Game
-    runs-on: ubuntu-latest
-    
-    steps:
-    # Checkout the code
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    # Setup Node.js
-    - name: Setup Node.js ${{ env.NODE_VERSION }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-    
-    # Create package.json if it doesn't exist
-    - name: Create package.json if missing
-      run: |
-        if [ ! -f package.json ]; then
-          echo "Creating package.json..."
-          cat > package.json << EOF
-        {
-          "name": "bingo-game",
-          "version": "1.0.0",
-          "description": "Interactive Bingo Game",
-          "main": "server.js",
-          "scripts": {
-            "start": "node server.js",
-            "dev": "node server.js",
-            "test": "echo 'No tests specified' && exit 0",
-            "lint": "echo 'No linting configured' && exit 0"
-          },
-          "dependencies": {
-            "express": "^4.18.0",
-            "socket.io": "^4.7.0"
-          },
-          "engines": {
-            "node": ">=14.0.0"
-          }
-        }
-        EOF
-        fi
-    
-    # Install dependencies
-    - name: Install dependencies
-      run: npm install
-    
-    # Check server.js syntax
-    - name: Validate server.js syntax
-      run: node -c server.js
-    
-    # Run tests (if any)
-    - name: Run tests
-      run: npm test
-    
-    # Check public folder structure
-    - name: Validate public files
-      run: |
-        echo "Checking public folder structure..."
-        if [ -d "public" ]; then
-          echo "Public folder contents:"
-          ls -la public/
-          
-          # Check for essential HTML file
-          if [ -f "public/index.html" ]; then
-            echo "✅ Found index.html"
-          else
-            echo "⚠️  No index.html found in public folder"
-          fi
-          
-          # Check for CSS files
-          if ls public/*.css 1> /dev/null 2>&1; then
-            echo "✅ Found CSS files"
-          else
-            echo "⚠️  No CSS files found"
-          fi
-          
-          # Check for JavaScript files
-          if ls public/*.js 1> /dev/null 2>&1; then
-            echo "✅ Found JavaScript files"
-          else
-            echo "⚠️  No JavaScript files found"
-          fi
-        else
-          echo "❌ No public folder found"
-          exit 1
-        fi
-    
-    # Create a simple build artifact
-    - name: Create build artifact
-      run: |
-        mkdir -p dist
-        cp server.js dist/
-        cp -r public dist/ 2>/dev/null || echo "No public folder to copy"
-        cp package.json dist/
-        echo "Build completed at $(date)" > dist/build-info.txt
-        ls -la dist/
-    
-    # Upload build artifacts
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: bingo-game-build
-        path: dist/
-        retention-days: 30
 
-  # Job 2: Security Check
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate syntax
+        run: node -c server.js
+
+      - name: Run tests
+        run: npm test
+
+      - name: Check public folder
+        run: |
+          echo "Checking public folder..."
+          if [ -d public ]; then
+            echo "Contents:"; ls -la public/
+            [ -f public/index.html ] && echo "✅ index.html found" || echo "⚠️ index.html missing"
+            ls public/*.css >/dev/null 2>&1 && echo "✅ CSS found" || echo "⚠️ CSS missing"
+            ls public/*.js >/dev/null 2>&1 && echo "✅ JS found" || echo "⚠️ JS missing"
+          else
+            echo "❌ public/ folder not found"
+            exit 1
+          fi
+
+      - name: Create artifact
+        run: |
+          mkdir -p dist
+          cp server.js dist/
+          cp -r public dist/ 2>/dev/null || echo "No public to copy"
+          cp package.json dist/
+          echo "Built on $(date)" > dist/build-info.txt
+          ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bingo-game-build
+          path: dist/
+          retention-days: 30
+
   security-check:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: build-and-test
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-   # Setup Node.js
-- name: Setup Node.js ${{ env.NODE_VERSION }}
-  uses: actions/setup-node@v4
-  with:
-    node-version: ${{ env.NODE_VERSION }}
-    cache: 'npm'
-    cache-dependency-path: './package-lock.json'
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Create package.json if missing
-      run: |
-        if [ ! -f package.json ]; then
-          cat > package.json << EOF
-        {
-          "name": "bingo-game",
-          "version": "1.0.0",
-          "dependencies": {
-            "express": "^4.18.0",
-            "socket.io": "^4.7.0"
-          }
-        }
-        EOF
-        fi
-    
-    - name: Install dependencies
-      run: npm install
-    
-    - name: Run security audit
-      run: |
-        npm audit --audit-level high || echo "Security issues found - review needed"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
 
-  # Job 3: Create Docker Image (Optional)
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm audit --audit-level high || echo "Security issues found – manual review needed"
+
   docker-build:
     name: Build Docker Image
     runs-on: ubuntu-latest
     needs: build-and-test
     if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Create Dockerfile
-      run: |
-        cat > Dockerfile << EOF
-        FROM node:18-alpine
-        
-        # Set working directory
-        WORKDIR /app
-        
-        # Copy package.json (create if doesn't exist)
-        COPY package*.json ./
-        RUN if [ ! -f package.json ]; then \\
-          echo '{"name":"bingo-game","main":"server.js","scripts":{"start":"node server.js"},"dependencies":{"express":"^4.18.0"}}' > package.json; \\
-        fi
-        
-        # Install dependencies
-        RUN npm install
-        
-        # Copy application files
-        COPY server.js ./
-        COPY public/ ./public/
-        
-        # Expose port (adjust if your server uses different port)
-        EXPOSE 3000
-        
-        # Health check
-        HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \\
-          CMD curl -f http://localhost:3000/health || exit 1
-        
-        # Start the application
-        CMD ["npm", "start"]
-        EOF
-    
-    - name: Build Docker image
-      run: |
-        docker build -t ${{ env.APP_NAME }}:latest .
-        echo "Docker image built successfully"
-    
-    - name: Test Docker image
-      run: |
-        # Run container in background
-        docker run -d --name test-container -p 3001:3000 ${{ env.APP_NAME }}:latest
-        
-        # Wait for container to start
-        sleep 10
-        
-        # Test if server is responding (adjust URL as needed)
-        curl -f http://localhost:3001/ || echo "Server not responding on expected port"
-        
-        # Stop and remove test container
-        docker stop test-container
-        docker rm test-container
 
-  # Job 4: Deployment Ready Check
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build and test Docker image
+        run: |
+          cat > Dockerfile << 'EOF'
+          FROM node:18-alpine
+          WORKDIR /app
+          COPY package*.json ./
+          RUN if [ ! -f package.json ]; then \
+                echo '{"name":"Bingo","main":"server.js","scripts":{"start":"node server.js"},"dependencies":{"express":"^4.18.0","socket.io":"^4.7.0"}}' > package.json; \
+              fi
+          RUN npm ci
+          COPY . .
+          EXPOSE 3000
+          HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+            CMD curl -f http://localhost:3000/health || exit 1
+          CMD ["npm", "start"]
+          EOF
+
+          docker build -t ${{ env.APP_NAME }}:latest .
+          docker run -d --name test-container -p 3001:3000 ${{ env.APP_NAME }}:latest
+          sleep 10
+          curl -f http://localhost:3001/ >/dev/null || echo "Server not reachable"
+          docker stop test-container
+          docker rm test-container
+
   deployment-check:
     name: Deployment Readiness
     runs-on: ubuntu-latest
     needs: [build-and-test, security-check]
-    
+
     steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: bingo-game-build
-        path: ./build-output
-    
-    - name: Verify deployment readiness
-      run: |
-        echo "=== Deployment Readiness Check ==="
-        echo "✅ Build artifacts created"
-        echo "✅ Tests passed"
-        echo "✅ Security check completed"
-        
-        echo ""
-        echo "Build contents:"
-        ls -la build-output/
-        
-        echo ""
-        echo "Your bingo game is ready for deployment!"
-        echo ""
-        echo "Next steps:"
-        echo "1. Set up your hosting platform (Heroku, Railway, etc.)"
-        echo "2. Configure environment variables"
-        echo "3. Set up deployment secrets in GitHub"
-        echo "4. Add deployment job to this pipeline"
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bingo-game-build
+          path: build-output/
+
+      - name: Show readiness info
+        run: |
+          echo "=== Deployment Check ==="
+          echo "Artifacts:"; ls -la build-output/
+          echo "Your Bingo Game is build and security-tested. Ready for deployment!"
+          echo "Next: Add deployment job with secrets to target environment."
+
+  # Example deployment job (uncomment/setup as needed)
+  # deploy:
+  #   name: Deploy to <Your Platform>
+  #   runs-on: ubuntu-latest
+  #   needs: deployment-check
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Setup deployment tool
+  #       run: echo "Set up deployment (e.g., Heroku, Railway, AWS CLI)"
+  #     - name: Deploy
+  #       run: echo "Deploying build-output to target environment"
+  #       env:
+  #         API_KEY: ${{ secrets.API_KEY }}
