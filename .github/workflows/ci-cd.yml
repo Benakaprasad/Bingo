@@ -20,6 +20,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: package-lock.json
       - run: npm ci
       - run: node -c server.js
       - run: npm test
@@ -51,6 +52,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm audit --audit-level high || echo "Security issues found – review needed"
 
